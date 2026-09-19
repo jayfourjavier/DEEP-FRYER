@@ -1,0 +1,746 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
+
+#include "webpage.h"
+
+// ============================================================
+// WIFI ACCESS POINT
+// ============================================================
+
+const char *AP_SSID = "SMART-DEEP-FRYER";
+const char *AP_PASSWORD = "12345678";
+
+IPAddress AP_IP(192, 168, 4, 1);
+IPAddress AP_GATEWAY(192, 168, 4, 1);
+IPAddress AP_SUBNET(255, 255, 255, 0);
+
+// ============================================================
+// SERVER
+// ============================================================
+
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+// ============================================================
+// FRYER STATES
+// ============================================================
+
+enum FryerState
+{
+    IDLE,
+    PREHEATING,
+    READY,
+    LOWERING,
+    FRYING,
+    RAISING
+};
+
+FryerState fryerState = IDLE;
+
+// ============================================================
+// SAVED RECIPE
+// ============================================================
+
+String selectedProduct = "";
+String selectedIcon = "";
+
+float targetTemperature = 120.0;
+
+int selectedDuration = 0;
+int remainingTime = 0;
+
+// ============================================================
+// TEMPERATURE
+// ============================================================
+
+float currentTemperature = 120.0;
+
+// ============================================================
+// TIMING
+// ============================================================
+
+unsigned long stateStartMillis = 0;
+unsigned long lastUpdateMillis = 0;
+
+// Simulated basket movement time
+const unsigned long LOWERING_TIME = 10000;
+const unsigned long RAISING_TIME = 10000;
+
+// Temperature simulation
+const float HEATING_RATE = 0.5;
+const float COOLING_RATE = 0.5;
+
+// ============================================================
+// STATE NAME
+// ============================================================
+
+const char *getStateName()
+{
+    switch (fryerState)
+    {
+    case IDLE:
+        return "IDLE";
+
+    case PREHEATING:
+        return "PREHEATING";
+
+    case READY:
+        return "READY";
+
+    case LOWERING:
+        return "LOWERING";
+
+    case FRYING:
+        return "FRYING";
+
+    case RAISING:
+        return "RAISING";
+    }
+
+    return "IDLE";
+}
+
+// ============================================================
+// SET STATE
+// ============================================================
+
+void setFryerState(FryerState newState)
+{
+    fryerState = newState;
+    stateStartMillis = millis();
+    Serial.printf("[STATE] %s -> %s\n", getStateName(), getStateName());
+}
+
+// ============================================================
+// BROADCAST STATUS
+// ============================================================
+
+void broadcastStatus()
+{
+    JsonDocument doc;
+
+    doc["type"] = "status";
+    doc["temperature"] = currentTemperature;
+    doc["target"] = targetTemperature;
+    doc["remaining"] = remainingTime;
+    doc["state"] = getStateName();
+
+    doc["product"] = selectedProduct;
+    doc["icon"] = selectedIcon;
+
+    String output;
+
+    serializeJson(doc, output);
+
+    ws.textAll(output);
+}
+
+// ============================================================
+// SEND STATUS TO ONE CLIENT
+// ============================================================
+
+void sendStatus(AsyncWebSocketClient *client)
+{
+    JsonDocument doc;
+
+    doc["type"] = "status";
+    doc["temperature"] = currentTemperature;
+    doc["target"] = targetTemperature;
+    doc["remaining"] = remainingTime;
+    doc["state"] = getStateName();
+
+    doc["product"] = selectedProduct;
+    doc["icon"] = selectedIcon;
+
+    String output;
+
+    serializeJson(doc, output);
+
+    client->text(output);
+}
+
+// ============================================================
+// SAVE RECIPE
+// ============================================================
+
+void saveRecipe(
+    const String &product,
+    const String &icon,
+    float temperature,
+    int duration)
+{
+    selectedProduct = product;
+    selectedIcon = icon;
+
+    targetTemperature = temperature;
+    selectedDuration = duration;
+
+    remainingTime = 0;
+
+    Serial.println();
+    Serial.println("===========================================");
+    Serial.println("[RECIPE] RECIPE SAVED");
+    Serial.println("-------------------------------------------");
+    Serial.printf("[RECIPE] Product     : %s\n", selectedProduct.c_str());
+    Serial.printf("[RECIPE] Icon        : %s\n", selectedIcon.c_str());
+    Serial.printf("[RECIPE] Temperature : %.1f C\n", targetTemperature);
+    Serial.printf("[RECIPE] Duration    : %d seconds\n", selectedDuration);
+    Serial.println("===========================================");
+    Serial.println();
+
+    // Start preheating automatically
+    setFryerState(PREHEATING);
+
+    broadcastStatus();
+}
+
+// ============================================================
+// CLEAR RECIPE
+// ============================================================
+
+void clearRecipe()
+{
+    selectedProduct = "";
+    selectedIcon = "";
+
+    targetTemperature = 120.0;
+    selectedDuration = 0;
+    remainingTime = 0;
+}
+
+// ============================================================
+// START FRYING SEQUENCE
+// ============================================================
+
+void startFrying()
+{
+    // --------------------------------------------------------
+    // IMPORTANT:
+    // START DOES NOT REQUIRE PRODUCT DATA.
+    //
+    // The recipe was already saved when the user selected
+    // the product.
+    // --------------------------------------------------------
+
+    if (selectedProduct.length() == 0)
+    {
+        Serial.println("[START] IGNORED - NO PRODUCT SELECTED");
+        return;
+    }
+
+    if (selectedDuration <= 0)
+    {
+        Serial.println("[START] IGNORED - INVALID DURATION");
+        return;
+    }
+
+    if (fryerState != READY)
+    {
+        Serial.printf("[START] IGNORED - CURRENT STATE: %s\n", getStateName());
+        return;
+    }
+
+    Serial.println();
+    Serial.println("===========================================");
+    Serial.println("[START] FRYING CYCLE STARTED");
+    Serial.println("-------------------------------------------");
+    Serial.printf("[START] Product     : %s\n", selectedProduct.c_str());
+    Serial.printf("[START] Temperature : %.1f C\n", targetTemperature);
+    Serial.printf("[START] Duration    : %d seconds\n", selectedDuration);
+    Serial.println("===========================================");
+    Serial.println();
+
+    // Do NOT reset the recipe here.
+    // Use the recipe already saved during product selection.
+
+    remainingTime = selectedDuration;
+
+    // First lower the basket.
+    setFryerState(LOWERING);
+
+    broadcastStatus();
+}
+
+// ============================================================
+// STOP FRYER
+// ============================================================
+
+void stopFryer()
+{
+    Serial.println();
+    Serial.println("[STOP] Fryer stopped");
+
+    remainingTime = 0;
+
+    // RAISE BASKET TO UPPER LIMIT.
+    setFryerState(RAISING);
+
+    clearRecipe();
+
+    broadcastStatus();
+}
+
+// ============================================================
+// SIMULATE TEMPERATURE
+// ============================================================
+
+void updateTemperature()
+{
+    switch (fryerState)
+    {
+    case PREHEATING:
+
+        if (currentTemperature < targetTemperature)
+        {
+            currentTemperature += HEATING_RATE;
+
+            if (currentTemperature > targetTemperature)
+            {
+                currentTemperature = targetTemperature;
+            }
+        }
+
+        break;
+
+    case READY:
+
+        // Hold temperature around target.
+        if (currentTemperature < targetTemperature)
+        {
+            currentTemperature += 0.1;
+        }
+        else if (currentTemperature > targetTemperature)
+        {
+            currentTemperature -= 0.1;
+        }
+
+        break;
+
+    case LOWERING:
+        // Maintain target temperature while basket lowers.
+        if (currentTemperature < targetTemperature)
+        {
+            currentTemperature += 0.3;
+        }
+
+        break;
+
+    case FRYING:
+        // Maintain target temperature while frying.
+        if (currentTemperature < targetTemperature)
+        {
+            currentTemperature += 0.4;
+        }
+        else if (currentTemperature > targetTemperature)
+        {
+            currentTemperature -= 0.2;
+        }
+
+        break;
+
+    case RAISING:
+        // Maintain target temperature while basket raises.
+        if (currentTemperature < targetTemperature)
+        {
+            currentTemperature += 0.2;
+        }
+        else if (currentTemperature > targetTemperature)
+        {
+            currentTemperature -= 0.2;
+        }
+        break;
+
+    case IDLE:
+
+        // Return to base temperature.
+        if (currentTemperature > 120.0)
+        {
+            currentTemperature -= COOLING_RATE;
+
+            if (currentTemperature < 120.0)
+            {
+                currentTemperature = 120.0;
+            }
+        }
+
+        break;
+    }
+}
+
+// ============================================================
+// UPDATE FRYER
+// ============================================================
+
+void updateFryer()
+{
+    unsigned long now = millis();
+
+    // --------------------------------------------------------
+    // TEMPERATURE
+    // --------------------------------------------------------
+    updateTemperature();
+
+    // --------------------------------------------------------
+    // PREHEATING
+    // --------------------------------------------------------
+    if (fryerState == PREHEATING)
+    {
+        if (currentTemperature >= targetTemperature)
+        {
+            currentTemperature = targetTemperature;
+
+            Serial.println();
+            Serial.println("[TEMP] TARGET TEMPERATURE REACHED");
+            Serial.printf("[TEMP] %.1f C\n", currentTemperature);
+            Serial.println("[STATE] READY - PRESS START");
+
+            remainingTime = 0;
+
+            setFryerState(READY);
+
+            broadcastStatus();
+        }
+    }
+
+    // --------------------------------------------------------
+    // READY
+    // --------------------------------------------------------
+
+    // IMPORTANT:
+    //
+    // READY DOES NOTHING AUTOMATICALLY.
+    //
+    // It waits indefinitely for the START command.
+    //
+
+    if (fryerState == READY)
+    {
+        // Temperature is maintained by updateTemperature().
+    }
+
+    // --------------------------------------------------------
+    // LOWERING
+    // --------------------------------------------------------
+
+    if (fryerState == LOWERING)
+    {
+        unsigned long elapsed =
+            now - stateStartMillis;
+
+        if (elapsed >= LOWERING_TIME)
+        {
+            Serial.println();
+            Serial.println("[BASKET] LOWER LIMIT REACHED");
+            Serial.println("[BASKET] STARTING FRY TIMER");
+
+            // Start the actual frying timer only after
+            // the basket has reached the bottom.
+
+            remainingTime = selectedDuration;
+
+            setFryerState(FRYING);
+
+            broadcastStatus();
+        }
+    }
+
+    // --------------------------------------------------------
+    // FRYING
+    // --------------------------------------------------------
+
+    if (fryerState == FRYING)
+    {
+        static unsigned long lastSecond = 0;
+
+        if (now - lastSecond >= 1000)
+        {
+            lastSecond = now;
+
+            if (remainingTime > 0)
+            {
+                remainingTime--;
+                Serial.printf("[FRYING] %s | %.1f C | %02d:%02d\n", selectedProduct.c_str(), currentTemperature, remainingTime / 60, remainingTime % 60);
+                broadcastStatus();
+            }
+
+            // ------------------------------------------------
+            // FRYING COMPLETE
+            // ------------------------------------------------
+
+            if (remainingTime <= 0)
+            {
+                remainingTime = 0;
+
+                Serial.println();
+                Serial.println("[FRYING] TIME COMPLETE");
+                Serial.println("[BASKET] RAISING BASKET");
+
+                setFryerState(RAISING);
+
+                broadcastStatus();
+            }
+        }
+    }
+
+    // --------------------------------------------------------
+    // RAISING
+    // --------------------------------------------------------
+
+    if (fryerState == RAISING)
+    {
+        unsigned long elapsed =
+            now - stateStartMillis;
+
+        if (elapsed >= RAISING_TIME)
+        {
+            Serial.println();
+            Serial.println("[BASKET] UPPER LIMIT REACHED");
+            Serial.println("[CYCLE] COMPLETE");
+            Serial.println("[CYCLE] RETURNING TO IDLE");
+
+            remainingTime = 0;
+
+            setFryerState(IDLE);
+
+            clearRecipe();
+
+            broadcastStatus();
+        }
+    }
+
+    // --------------------------------------------------------
+    // PERIODIC STATUS
+    // --------------------------------------------------------
+
+    if (now - lastUpdateMillis >= 500)
+    {
+        lastUpdateMillis = now;
+
+        broadcastStatus();
+    }
+}
+
+// ============================================================
+// WEBSOCKET MESSAGE
+// ============================================================
+
+void handleWebSocketMessage(
+    AsyncWebSocketClient *client,
+    uint8_t *data,
+    size_t len)
+{
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, data, len);
+
+    if (error)
+    {
+        Serial.printf("[WS] JSON ERROR: %s\n", error.c_str());
+        return;
+    }
+
+    String command = doc["command"] | "";
+
+    Serial.printf("[WS] COMMAND: %s\n", command.c_str());
+
+    // ========================================================
+    // STATUS
+    // ========================================================
+
+    if (command == "status")
+    {
+        sendStatus(client);
+        return;
+    }
+
+    // ========================================================
+    // SELECT PRODUCT
+    // ========================================================
+
+    if (command == "select")
+    {
+        // Product selection is only allowed when IDLE.
+
+        if (fryerState != IDLE)
+        {
+            Serial.printf("[SELECT] IGNORED - CURRENT STATE: %s\n", getStateName());
+            sendStatus(client);
+            return;
+        }
+
+        String product = doc["product"] | "";
+        String icon = doc["icon"] | "";
+        float temperature = doc["temperature"] | 120.0;
+        int duration = doc["duration"] | 0;
+
+        // Validate recipe
+
+        if (product.length() == 0)
+        {
+            Serial.println("[SELECT] IGNORED - EMPTY PRODUCT");
+            return;
+        }
+
+        if (temperature <= 0)
+        {
+            Serial.println("[SELECT] IGNORED - INVALID TEMPERATURE");
+            return;
+        }
+
+        if (duration <= 0)
+        {
+            Serial.println("[SELECT] IGNORED - INVALID DURATION");
+            return;
+        }
+
+        // Save recipe and start preheating.
+        saveRecipe(product, icon, temperature, duration);
+
+        return;
+    }
+
+    // ========================================================
+    // START
+    // ========================================================
+
+    if (command == "start")
+    {
+        Serial.println("[WS] START COMMAND RECEIVED");
+
+        startFrying();
+
+        return;
+    }
+
+    // ========================================================
+    // STOP
+    // ========================================================
+
+    if (command == "stop")
+    {
+        stopFryer();
+
+        return;
+    }
+
+    // ========================================================
+    // UNKNOWN COMMAND
+    // ========================================================
+
+    Serial.printf("[WS] UNKNOWN COMMAND: %s\n", command.c_str());
+}
+
+// ============================================================
+// WEBSOCKET EVENT
+// ============================================================
+
+void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+{
+    switch (type)
+    {
+    case WS_EVT_CONNECT:
+        Serial.printf("[WS] Client #%u connected\n", client->id());
+        sendStatus(client);
+        break;
+
+    case WS_EVT_DISCONNECT:
+        Serial.printf("[WS] Client #%u disconnected\n", client->id());
+        break;
+
+    case WS_EVT_DATA:
+    {
+        AwsFrameInfo *info = (AwsFrameInfo *)arg;
+
+        if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+        {
+            handleWebSocketMessage(client, data, len);
+        }
+        break;
+    }
+
+    case WS_EVT_PONG:
+        break;
+
+    case WS_EVT_ERROR:
+        Serial.printf("[WS] Client #%u error\n", client->id());
+        break;
+    }
+}
+
+// ============================================================
+// SETUP
+// ============================================================
+
+void setup()
+{
+    Serial.begin(115200);
+
+    delay(500);
+
+    Serial.println();
+    Serial.println();
+    Serial.println("===========================================");
+    Serial.println("       SMART DEEP FRYER");
+    Serial.println("===========================================");
+
+    // ========================================================
+    // WIFI ACCESS POINT
+    // ========================================================
+
+    WiFi.mode(WIFI_AP);
+    WiFi.softAPConfig(AP_IP, AP_GATEWAY, AP_SUBNET);
+    WiFi.softAP(AP_SSID, AP_PASSWORD);
+
+    Serial.println();
+    Serial.println("[WIFI] ACCESS POINT STARTED");
+    Serial.printf("[WIFI] SSID     : %s\n", AP_SSID);
+    Serial.printf("[WIFI] PASSWORD : %s\n", AP_PASSWORD);
+    Serial.printf("[WIFI] IP       : %s\n", WiFi.softAPIP().toString().c_str());
+
+    // ========================================================
+    // WEBSOCKET
+    // ========================================================
+    ws.onEvent(onWebSocketEvent);
+    server.addHandler(&ws);
+
+    // ========================================================
+    // DASHBOARD
+    // ========================================================
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send_P(200, "text/html", webpage); });
+
+    // ========================================================
+    // START SERVER
+    // ========================================================
+    server.begin();
+    Serial.println();
+    Serial.println("[HTTP] SERVER STARTED");
+    Serial.println("[HTTP] DASHBOARD: http://192.168.4.1");
+    Serial.println();
+    Serial.println("[SYSTEM] READY");
+    Serial.println("===========================================");
+    Serial.println();
+
+    // Initial state
+
+    clearRecipe();
+
+    currentTemperature = 120.0;
+    targetTemperature = 120.0;
+
+    setFryerState(IDLE);
+
+    broadcastStatus();
+}
+
+// ============================================================
+// LOOP
+// ============================================================
+
+void loop()
+{
+    updateFryer();
+    ws.cleanupClients();
+    delay(10);
+}
