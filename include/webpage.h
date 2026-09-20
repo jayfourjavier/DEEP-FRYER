@@ -652,8 +652,8 @@ button:active {
                     class="product"
                     data-product="French Fries"
                     data-icon="🍟"
-                    data-temperature="180"
-                    data-duration="240">
+                    data-temperature="30"
+                    data-duration="70">
 
                     <div class="product-icon">
                         🍟

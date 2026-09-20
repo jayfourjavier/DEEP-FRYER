@@ -54,7 +54,7 @@ Relay heaterRelay(HEATER_RELAY_PIN, "Heater Relay", true);
 Relay upwardRelay(UPWARD_RELAY_PIN, "Upward Relay", true);
 Relay downwardRelay(DOWNWARD_RELAY_PIN, "Downward Relay", true);
 
-Buzzer buzzer(BUZZER_PIN, "Buzzer", true);
+Buzzer buzzer(BUZZER_PIN, "Buzzer", false);
 
 // ============================================================
 // WEB SERVER
