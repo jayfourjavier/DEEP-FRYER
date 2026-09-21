@@ -12,8 +12,8 @@
 // WIFI ACCESS POINT
 // ============================================================
 
-const char *AP_SSID = "SMART-DEEP-FRYER";
-const char *AP_PASSWORD = "12345678";
+const char *AP_SSID = "SMART_DEEP_FRYER";
+const char *AP_PASSWORD = "14789632580";
 
 IPAddress AP_IP(192, 168, 4, 1);
 IPAddress AP_GATEWAY(192, 168, 4, 1);
@@ -32,10 +32,17 @@ IPAddress AP_SUBNET(255, 255, 255, 0);
 #define BUZZER_PIN 4
 
 // CHANGE THESE TO YOUR ACTUAL LIMIT SWITCH PINS
-#define UPPER_LIMIT_PIN 27
-#define LOWER_LIMIT_PIN 14
+#define UPPER_LIMIT_PIN 16
+#define LOWER_LIMIT_PIN 17
 
 #define LIMIT_ACTIVE LOW
+
+// Set these above the normal mechanical travel time of the basket.
+#define SECONDS_TO_MILLIS(seconds) ((unsigned long)(seconds) * 1000UL)
+#define BASKET_LOWERING_TIMEOUT_SECONDS 20UL
+#define BASKET_RAISING_TIMEOUT_SECONDS 20UL
+#define BASKET_LOWERING_TIMEOUT_MS SECONDS_TO_MILLIS(BASKET_LOWERING_TIMEOUT_SECONDS)
+#define BASKET_RAISING_TIMEOUT_MS SECONDS_TO_MILLIS(BASKET_RAISING_TIMEOUT_SECONDS)
 
 // ============================================================
 // PT100
@@ -74,10 +81,15 @@ enum FryerState
     READY,
     LOWERING,
     FRYING,
-    RAISING
+    RAISING,
+    FAULT
 };
 
 FryerState fryerState = IDLE;
+
+// Pending actions and faults
+bool pendingStart = false;
+String lastFault = "";
 
 // ============================================================
 // RECIPE
@@ -101,6 +113,19 @@ bool temperatureValid = false;
 const float IDLE_TEMPERATURE = 120.0;
 
 const float HEATER_ON_OFFSET = 2.0;
+
+// ============================================================
+// OVERTEMPERATURE / RUNAWAY SAFEGUARDS
+// ============================================================
+
+const float OVERTEMP_OFFSET = 20.0;            // user requested: target +20°C triggers over-temp
+const float ABSOLUTE_MAX_TEMP = 240.0;         // absolute hard limit
+const float RUNAWAY_DELTA_C = 5.0;             // rise in degrees considered runaway
+const unsigned long RUNAWAY_WINDOW_MS = 10000; // window to measure rise (10s)
+
+// tracking for runaway detection
+unsigned long tempWindowStartMillis = 0;
+float tempWindowStartTemp = 0.0;
 
 // ============================================================
 // TIMERS
@@ -166,6 +191,9 @@ const char *getStateName(FryerState state)
 
     case RAISING:
         return "RAISING";
+
+    case FAULT:
+        return "FAULT";
     }
 
     return "IDLE";
@@ -221,6 +249,12 @@ void setFryerState(FryerState newState)
         upwardRelay.on();
         buzzer.mode(BUZZER_RAISING);
         break;
+
+    case FAULT:
+        heaterRelay.off();
+        stopBasketMotor();
+        buzzer.mode(BUZZER_ALARM);
+        break;
     }
 }
 
@@ -228,14 +262,70 @@ void setFryerState(FryerState newState)
 // LIMIT SWITCHES
 // ============================================================
 
+// Debounce configuration for mechanical limit switches
+const unsigned long LIMIT_DEBOUNCE_MS = 50UL; // 50 ms debounce
+
+// Upper limit debounce state
+int upper_last_raw = HIGH;
+unsigned long upper_last_change_ms = 0;
+bool upper_stable = false;
+
+// Lower limit debounce state
+int lower_last_raw = HIGH;
+unsigned long lower_last_change_ms = 0;
+bool lower_stable = false;
+
 bool upperLimitReached()
 {
-    return digitalRead(UPPER_LIMIT_PIN) == LIMIT_ACTIVE;
+    int raw = digitalRead(UPPER_LIMIT_PIN);
+
+    if (raw != upper_last_raw)
+    {
+        // raw changed — reset timer
+        upper_last_change_ms = millis();
+        upper_last_raw = raw;
+    }
+    else
+    {
+        // raw stable — if stable for debounce window, commit
+        if ((millis() - upper_last_change_ms) >= LIMIT_DEBOUNCE_MS)
+        {
+            bool newStable = (raw == LIMIT_ACTIVE);
+            if (newStable != upper_stable)
+            {
+                upper_stable = newStable;
+                // optional: log change
+                Serial.printf("[LIMIT] Upper debounced -> %s\n", upper_stable ? "ACTIVE" : "INACTIVE");
+            }
+        }
+    }
+
+    return upper_stable;
 }
 
 bool lowerLimitReached()
 {
-    return digitalRead(LOWER_LIMIT_PIN) == LIMIT_ACTIVE;
+    int raw = digitalRead(LOWER_LIMIT_PIN);
+
+    if (raw != lower_last_raw)
+    {
+        lower_last_change_ms = millis();
+        lower_last_raw = raw;
+    }
+    else
+    {
+        if ((millis() - lower_last_change_ms) >= LIMIT_DEBOUNCE_MS)
+        {
+            bool newStable = (raw == LIMIT_ACTIVE);
+            if (newStable != lower_stable)
+            {
+                lower_stable = newStable;
+                Serial.printf("[LIMIT] Lower debounced -> %s\n", lower_stable ? "ACTIVE" : "INACTIVE");
+            }
+        }
+    }
+
+    return lower_stable;
 }
 
 // ============================================================
@@ -263,6 +353,13 @@ void broadcastStatus()
     doc["state"] = getStateName(fryerState);
     doc["product"] = selectedProduct;
     doc["icon"] = selectedIcon;
+    // expose upper limit switch state to the UI so it can decide
+    // whether homing is required before confirming actions
+    doc["upper"] = upperLimitReached();
+    if (lastFault.length() > 0)
+    {
+        doc["fault"] = lastFault;
+    }
 
     String output;
 
@@ -286,6 +383,11 @@ void sendStatus(AsyncWebSocketClient *client)
     doc["state"] = getStateName(fryerState);
     doc["product"] = selectedProduct;
     doc["icon"] = selectedIcon;
+    doc["upper"] = upperLimitReached();
+    if (lastFault.length() > 0)
+    {
+        doc["fault"] = lastFault;
+    }
 
     String output;
 
@@ -319,6 +421,10 @@ void saveRecipe(const String &product, const String &icon, float temperature, in
     Serial.println();
 
     setFryerState(PREHEATING);
+    // Ensure any pending start/homing attempts are cancelled when a
+    // new recipe is selected. Selection should not move the basket.
+    pendingStart = false;
+    lastFault = "";
 
     broadcastStatus();
 }
@@ -365,6 +471,21 @@ void startFrying()
     if (!temperatureValid)
     {
         Serial.println("[START] IGNORED - INVALID TEMPERATURE");
+        lastFault = "PT100_INVALID";
+        // report fault but do not proceed
+        setFryerState(FAULT);
+        broadcastStatus();
+        return;
+    }
+
+    // Safe-start: ensure basket is homed (upper limit). If not, raise first and
+    // continue automatically once homed.
+    if (!upperLimitReached())
+    {
+        Serial.println("[START] BASKET NOT RAISED - RAISING TO HOME BEFORE START");
+        pendingStart = true;
+        setFryerState(RAISING);
+        broadcastStatus();
         return;
     }
 
@@ -436,7 +557,9 @@ void readTemperature()
         pt100.clearFault();
         temperatureValid = false;
         heaterRelay.off();
-
+        lastFault = "PT100_FAULT";
+        setFryerState(FAULT);
+        broadcastStatus();
         return;
     }
 
@@ -447,11 +570,89 @@ void readTemperature()
         Serial.println("[PT100] INVALID TEMPERATURE");
         temperatureValid = false;
         heaterRelay.off();
+        lastFault = "PT100_INVALID";
+        setFryerState(FAULT);
+        broadcastStatus();
         return;
     }
 
     currentTemperature = temperature;
     temperatureValid = true;
+
+    // -----------------------------
+    // Over-temperature absolute limit
+    // -----------------------------
+    if (currentTemperature >= ABSOLUTE_MAX_TEMP)
+    {
+        Serial.printf("[OVERTEMP] ABSOLUTE MAX REACHED: %.1f C\n", currentTemperature);
+        heaterRelay.off();
+        lastFault = "ABS_OVERTEMP";
+        setFryerState(FAULT);
+        broadcastStatus();
+        return;
+    }
+
+    // -----------------------------
+    // Over-target offset (user requested +20C)
+    // -----------------------------
+    if (currentTemperature > targetTemperature + OVERTEMP_OFFSET)
+    {
+        Serial.printf("[OVERTEMP] TARGET OVERSHOOT: %.1f C (target %.1f + offset %.1f)\n", currentTemperature, targetTemperature, OVERTEMP_OFFSET);
+        heaterRelay.off();
+        lastFault = "OVERTEMP";
+        setFryerState(FAULT);
+        broadcastStatus();
+        return;
+    }
+
+    // -----------------------------
+    // Runaway detection (rate-of-rise)
+    // -----------------------------
+    unsigned long now = millis();
+
+    if (tempWindowStartMillis == 0)
+    {
+        tempWindowStartMillis = now;
+        tempWindowStartTemp = currentTemperature;
+    }
+    else if (now - tempWindowStartMillis >= RUNAWAY_WINDOW_MS)
+    {
+        float delta = currentTemperature - tempWindowStartTemp;
+
+        if (delta >= RUNAWAY_DELTA_C)
+        {
+            Serial.printf("[RUNAWAY] Temperature rose %.2f C in %lu ms\n", delta, now - tempWindowStartMillis);
+
+            // Treat as thermal runaway: stop heating and raise basket automatically
+            heaterRelay.off();
+            lastFault = "RUNAWAY_TEMP";
+
+            // If not already raising, start raising so basket leaves oil
+            if (!upperLimitReached())
+            {
+                Serial.println("[RUNAWAY] Auto-raising basket to remove product from oil");
+                // set state to RAISING (this turns on upward relay via setFryerState)
+                setFryerState(RAISING);
+            }
+            else
+            {
+                // already raised — just set fault state
+                setFryerState(FAULT);
+            }
+
+            broadcastStatus();
+
+            // reset window start so we don't repeatedly trigger
+            tempWindowStartMillis = 0;
+            tempWindowStartTemp = 0.0;
+
+            return;
+        }
+
+        // slide the window forward
+        tempWindowStartMillis = now;
+        tempWindowStartTemp = currentTemperature;
+    }
 }
 
 // ============================================================
@@ -508,6 +709,16 @@ void updateBasket()
 
             broadcastStatus();
         }
+        else if (millis() - stateStartMillis >= BASKET_LOWERING_TIMEOUT_MS)
+        {
+            Serial.printf("[BASKET] LOWERING TIMEOUT AFTER %lu SECONDS\n", BASKET_LOWERING_TIMEOUT_SECONDS);
+
+            remainingTime = 0;
+            lastFault = "LOWERING_TIMEOUT";
+            setFryerState(FAULT);
+
+            broadcastStatus();
+        }
         else
         {
             downwardRelay.on();
@@ -525,14 +736,36 @@ void updateBasket()
             upwardRelay.off();
 
             Serial.println("[BASKET] UPPER LIMIT REACHED");
-            Serial.println("[CYCLE] COMPLETE");
-            Serial.println("[CYCLE] RETURNING TO IDLE");
+
+            if (pendingStart)
+            {
+                // We were homing to start the cycle: clear the flag and lower immediately
+                Serial.println("[BASKET] UPPER LIMIT REACHED (for pending start). Lowering now.");
+                pendingStart = false;
+                setFryerState(LOWERING);
+                broadcastStatus();
+            }
+            else
+            {
+                Serial.println("[CYCLE] COMPLETE");
+                Serial.println("[CYCLE] RETURNING TO IDLE");
+
+                remainingTime = 0;
+
+                setFryerState(IDLE);
+
+                clearRecipe();
+
+                broadcastStatus();
+            }
+        }
+        else if (millis() - stateStartMillis >= BASKET_RAISING_TIMEOUT_MS)
+        {
+            Serial.printf("[BASKET] RAISING TIMEOUT AFTER %lu SECONDS\n", BASKET_RAISING_TIMEOUT_SECONDS);
 
             remainingTime = 0;
-
-            setFryerState(IDLE);
-
-            clearRecipe();
+            lastFault = "RAISING_TIMEOUT";
+            setFryerState(FAULT);
 
             broadcastStatus();
         }
@@ -596,29 +829,39 @@ void updateFryer()
 
     if (fryerState == FRYING)
     {
-        if (now - lastFrySecondMillis >= 1000)
+        // Calculate elapsed whole seconds since last tick and decrement accordingly.
+        if (now > lastFrySecondMillis)
         {
-            lastFrySecondMillis += 1000;
+            unsigned long elapsedMs = now - lastFrySecondMillis;
+            unsigned long elapsedSec = elapsedMs / 1000UL;
 
-            if (remainingTime > 0)
+            if (elapsedSec >= 1UL)
             {
-                remainingTime--;
+                // advance the last tick by the elapsed whole seconds
+                lastFrySecondMillis += elapsedSec * 1000UL;
 
-                Serial.printf("[FRYING] %s | %.1f C | %02d:%02d\n", selectedProduct.c_str(), currentTemperature, remainingTime / 60, remainingTime % 60);
+                if (remainingTime > 0)
+                {
+                    // don't underflow remainingTime
+                    int dec = (elapsedSec > (unsigned long)remainingTime) ? remainingTime : (int)elapsedSec;
+                    remainingTime -= dec;
 
-                broadcastStatus();
-            }
+                    Serial.printf("[FRYING] -%d sec | %s | %.1f C | %02d:%02d\n", dec, selectedProduct.c_str(), currentTemperature, remainingTime / 60, remainingTime % 60);
 
-            if (remainingTime <= 0)
-            {
-                remainingTime = 0;
+                    broadcastStatus();
+                }
 
-                Serial.println("[FRYING] TIME COMPLETE");
-                Serial.println("[BASKET] RAISING BASKET");
+                if (remainingTime <= 0)
+                {
+                    remainingTime = 0;
 
-                setFryerState(RAISING);
+                    Serial.println("[FRYING] TIME COMPLETE");
+                    Serial.println("[BASKET] RAISING BASKET");
 
-                broadcastStatus();
+                    setFryerState(RAISING);
+
+                    broadcastStatus();
+                }
             }
         }
     }
@@ -662,6 +905,36 @@ void handleWebSocketMessage(AsyncWebSocketClient *client, uint8_t *data, size_t 
     if (command == "status")
     {
         sendStatus(client);
+        return;
+    }
+
+    // ========================================================
+    // RAISE (homing) - UI can request the basket raise to home
+    // ========================================================
+    if (command == "raise")
+    {
+        Serial.println("[WS] RAISE (homing) COMMAND RECEIVED");
+
+        // Only trigger raising if we're not already at the upper limit
+        if (!upperLimitReached())
+        {
+            // ensure we're not in a FAULT state before attempting to raise
+            if (fryerState == FAULT)
+            {
+                Serial.println("[RAISE] IGNORED - CURRENT STATE: FAULT");
+                sendStatus(client);
+                return;
+            }
+
+            setFryerState(RAISING);
+            broadcastStatus();
+        }
+        else
+        {
+            // already homed
+            sendStatus(client);
+        }
+
         return;
     }
 
@@ -736,6 +1009,17 @@ void handleWebSocketMessage(AsyncWebSocketClient *client, uint8_t *data, size_t 
     }
 
     // ========================================================
+    // REBOOT (soft)
+    // ========================================================
+    if (command == "reboot")
+    {
+        Serial.println("[WS] REBOOT COMMAND RECEIVED");
+        // attempt a soft restart
+        ESP.restart();
+        return;
+    }
+
+    // ========================================================
     // UNKNOWN COMMAND
     // ========================================================
 
@@ -806,6 +1090,15 @@ void setup()
 
     pinMode(UPPER_LIMIT_PIN, INPUT_PULLUP);
     pinMode(LOWER_LIMIT_PIN, INPUT_PULLUP);
+
+    // initialize debounce state for limit switches
+    upper_last_raw = digitalRead(UPPER_LIMIT_PIN);
+    upper_last_change_ms = millis();
+    upper_stable = (upper_last_raw == LIMIT_ACTIVE);
+
+    lower_last_raw = digitalRead(LOWER_LIMIT_PIN);
+    lower_last_change_ms = millis();
+    lower_stable = (lower_last_raw == LIMIT_ACTIVE);
 
     // ========================================================
     // PT100
@@ -891,6 +1184,19 @@ void setup()
     temperatureValid = false;
 
     setFryerState(IDLE);
+
+    // Ensure the basket is homed on power-up. If the upper limit is
+    // not reached, start raising immediately so the UI shows the
+    // homing action and buttons remain disabled until complete.
+    pendingStart = false; // ensure we are not auto-starting a fry
+    lastFault = "";
+
+    if (!upperLimitReached())
+    {
+        Serial.println("[BOOT] Basket not at upper limit - raising to home (power-on homing)");
+        setFryerState(RAISING);
+        broadcastStatus();
+    }
 
     Serial.println();
     Serial.println("[SYSTEM] READY");

@@ -54,6 +54,7 @@ button:active {
     transform: scale(0.98);
 }
 
+
 /* =========================================================
    MAIN
    ========================================================= */
@@ -66,6 +67,7 @@ button:active {
     flex-direction: column;
     background: #ffffff;
 }
+
 
 /* =========================================================
    HEADER
@@ -133,6 +135,7 @@ button:active {
     background: #ef4444;
 }
 
+
 /* =========================================================
    CONTENT
    ========================================================= */
@@ -143,6 +146,7 @@ button:active {
     gap: 16px;
     padding: 16px;
 }
+
 
 /* =========================================================
    LEFT TEMPERATURE PANEL
@@ -205,6 +209,7 @@ button:active {
     color: #111827;
 }
 
+
 /* =========================================================
    STATUS CARD
    ========================================================= */
@@ -239,6 +244,7 @@ button:active {
     text-overflow: ellipsis;
 }
 
+
 /* =========================================================
    TIMER CARD
    ========================================================= */
@@ -266,6 +272,7 @@ button:active {
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
+
 
 /* =========================================================
    PRODUCTS
@@ -353,6 +360,7 @@ button:active {
     font-size: 25px;
 }
 
+
 /* =========================================================
    FOOTER
    ========================================================= */
@@ -367,17 +375,24 @@ button:active {
 }
 
 .control-button {
-    flex: 1;
-    border: none;
+    border: 2px solid #d1d5db;
     border-radius: 12px;
+    background: transparent;
+    color: #111827;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 12px 18px;
+    text-align: center;
+    width: 100%;
+}
+
+.control-button.actionable {
     background: #111827;
     color: white;
-    font-size: 20px;
-    font-weight: 700;
 }
 
 .control-button:disabled {
-    background: #9ca3af;
+    opacity: 0.6;
     cursor: not-allowed;
 }
 
@@ -401,6 +416,7 @@ button:active {
     font-size: 14px;
     font-weight: 700;
 }
+
 
 /* =========================================================
    MODAL
@@ -477,6 +493,7 @@ button:active {
     color: white;
 }
 
+
 /* =========================================================
    RESPONSIVE CENTERING
    ========================================================= */
@@ -496,6 +513,7 @@ button:active {
 <body>
 
 <div class="app">
+
 
     <!-- =====================================================
          HEADER
@@ -523,6 +541,7 @@ button:active {
 
         </div>
 
+
         <div class="connection">
 
             <div
@@ -545,17 +564,20 @@ button:active {
 
     <div class="content">
 
+
         <!-- =================================================
              LEFT PANEL
              ================================================= -->
 
         <div class="left-panel">
 
+
             <div class="temperature-card">
 
                 <div class="card-label">
                     Oil Temperature
                 </div>
+
 
                 <div class="temperature">
 
@@ -590,7 +612,7 @@ button:active {
                 <div
                     id="status"
                     class="status">
-                    SELECT PRODUCT
+                    IDLE - SELECT PRODUCT TO START
                 </div>
 
                 <div
@@ -600,7 +622,6 @@ button:active {
                 </div>
 
             </div>
-
 
             <div class="timer-card">
 
@@ -642,316 +663,14 @@ button:active {
             </div>
 
 
-            <div class="products" id="products">
-
-                <!-- =========================================
-                     FRENCH FRIES
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="French Fries"
-                    data-icon="🍟"
-                    data-temperature="30"
-                    data-duration="70">
-
-                    <div class="product-icon">
-                        🍟
-                    </div>
-
-                    <div class="product-name">
-                        French Fries
-                    </div>
-
-                    <div class="product-info">
-                        180°C · 04:00
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     CHICKEN
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Chicken"
-                    data-icon="🍗"
-                    data-temperature="170"
-                    data-duration="480">
-
-                    <div class="product-icon">
-                        🍗
-                    </div>
-
-                    <div class="product-name">
-                        Chicken
-                    </div>
-
-                    <div class="product-info">
-                        170°C · 08:00
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     FISH
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Fish"
-                    data-icon="🐟"
-                    data-temperature="170"
-                    data-duration="360">
-
-                    <div class="product-icon">
-                        🐟
-                    </div>
-
-                    <div class="product-name">
-                        Fish
-                    </div>
-
-                    <div class="product-info">
-                        170°C · 06:00
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     ONION RINGS
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Onion Rings"
-                    data-icon="🧅"
-                    data-temperature="175"
-                    data-duration="180">
-
-                    <div class="product-icon">
-                        🧅
-                    </div>
-
-                    <div class="product-name">
-                        Onion Rings
-                    </div>
-
-                    <div class="product-info">
-                        175°C · 03:00
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     SHRIMP
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Shrimp"
-                    data-icon="🍤"
-                    data-temperature="175"
-                    data-duration="180">
-
-                    <div class="product-icon">
-                        🍤
-                    </div>
-
-                    <div class="product-name">
-                        Shrimp
-                    </div>
-
-                    <div class="product-info">
-                        175°C · 03:00
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     MOZZARELLA STICKS
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Mozzarella Sticks"
-                    data-icon="🧀"
-                    data-temperature="175"
-                    data-duration="150">
-
-                    <div class="product-icon">
-                        🧀
-                    </div>
-
-                    <div class="product-name">
-                        Mozzarella Sticks
-                    </div>
-
-                    <div class="product-info">
-                        175°C · 02:30
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     CALAMARI
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Calamari"
-                    data-icon="🦑"
-                    data-temperature="175"
-                    data-duration="180">
-
-                    <div class="product-icon">
-                        🦑
-                    </div>
-
-                    <div class="product-name">
-                        Calamari
-                    </div>
-
-                    <div class="product-info">
-                        175°C · 03:00
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     FISH FILLET
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Fish Fillet"
-                    data-icon="🐟"
-                    data-temperature="170"
-                    data-duration="300">
-
-                    <div class="product-icon">
-                        🐟
-                    </div>
-
-                    <div class="product-name">
-                        Fish Fillet
-                    </div>
-
-                    <div class="product-info">
-                        170°C · 05:00
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     SWEET POTATO FRIES
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Sweet Potato Fries"
-                    data-icon="🍠"
-                    data-temperature="175"
-                    data-duration="240">
-
-                    <div class="product-icon">
-                        🍠
-                    </div>
-
-                    <div class="product-name">
-                        Sweet Potato Fries
-                    </div>
-
-                    <div class="product-info">
-                        175°C · 04:00
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     DOUGHNUT
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Doughnut"
-                    data-icon="🍩"
-                    data-temperature="170"
-                    data-duration="150">
-
-                    <div class="product-icon">
-                        🍩
-                    </div>
-
-                    <div class="product-name">
-                        Doughnut
-                    </div>
-
-                    <div class="product-info">
-                        170°C · 02:30
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     SPRING ROLLS
-                     ========================================= -->
-
-                <button
-                    class="product"
-                    data-product="Spring Rolls"
-                    data-icon="🥟"
-                    data-temperature="175"
-                    data-duration="180">
-
-                    <div class="product-icon">
-                        🥟
-                    </div>
-
-                    <div class="product-name">
-                        Spring Rolls
-                    </div>
-
-                    <div class="product-info">
-                        175°C · 03:00
-                    </div>
-
-                </button>
-
-
-                <!-- =========================================
-                     MANUAL ENTRY
-                     ========================================= -->
-
-                <button
-                    class="product manual"
-                    id="manualProduct">
-
-                    <div class="product-icon">
-                        ⚙️
-                    </div>
-
-                    <div class="product-name">
-                        Manual Entry
-                    </div>
-
-                    <div class="product-info">
-                        Custom recipe
-                    </div>
-
-                </button>
-
+            <!--
+                Product buttons are generated
+                automatically from the products[] array.
+            -->
+
+            <div
+                class="products"
+                id="products">
             </div>
 
         </div>
@@ -964,40 +683,6 @@ button:active {
          ===================================================== -->
 
     <div class="footer">
-
-        <div class="recipe-info">
-
-            <div>
-
-                <div class="recipe-label">
-                    Saved Recipe
-                </div>
-
-                <div
-                    id="recipeName"
-                    class="recipe-value">
-                    None
-                </div>
-
-            </div>
-
-            <div>
-
-                <div class="recipe-label">
-                    Target
-                </div>
-
-                <div
-                    id="recipeTarget"
-                    class="recipe-value">
-                    --
-                </div>
-
-            </div>
-
-        </div>
-
-
         <button
             id="controlButton"
             class="control-button"
@@ -1006,7 +691,6 @@ button:active {
             SELECT PRODUCT
 
         </button>
-
     </div>
 
 </div>
@@ -1026,6 +710,7 @@ button:active {
             Manual Recipe
         </h2>
 
+
         <div class="input-group">
 
             <label>
@@ -1038,6 +723,7 @@ button:active {
                 placeholder="Product name">
 
         </div>
+
 
         <div class="input-group">
 
@@ -1054,6 +740,7 @@ button:active {
 
         </div>
 
+
         <div class="input-group">
 
             <label>
@@ -1068,18 +755,100 @@ button:active {
 
         </div>
 
+        <div style="font-size:12px; color:#6b7280; margin-top:6px;">
+            Preview: <span id="manualDurationPreview">--:--</span>
+        </div>
+
+
         <div class="modal-buttons">
 
             <button
                 id="manualCancel"
                 class="modal-button cancel-button">
+
                 Cancel
+
             </button>
+
 
             <button
                 id="manualSave"
                 class="modal-button save-button">
+
                 Save Recipe
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     CONFIRMATION MODALS
+     ========================================================= -->
+
+<div id="confirmSelectModal" class="modal-backdrop">
+    <div class="modal">
+        <h2>Confirm Recipe</h2>
+        <div style="margin-bottom:8px;"><strong id="confirmSelectName">Product</strong></div>
+        <div>Temperature: <span id="confirmSelectTemp">--°C</span></div>
+        <div>Duration: <span id="confirmSelectDuration">--:--</span></div>
+        <div id="confirmSelectHint" style="color:#6b7280; font-size:12px; margin-top:8px;"></div>
+        <div class="modal-buttons">
+            <button id="confirmSelectCancel" class="modal-button cancel-button">Cancel</button>
+            <button id="confirmSelectConfirm" class="modal-button save-button">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="confirmStartModal" class="modal-backdrop">
+    <div class="modal">
+        <h2>Start Frying?</h2>
+        <div style="margin-bottom:10px;">Are you sure you want to start the frying cycle?</div>
+        <div id="confirmStartHint" style="color:#6b7280; font-size:12px; margin-top:8px;"></div>
+        <div class="modal-buttons">
+            <button id="confirmStartCancel" class="modal-button cancel-button">Cancel</button>
+            <button id="confirmStartConfirm" class="modal-button save-button">Start</button>
+        </div>
+    </div>
+</div>
+
+<div id="confirmDoneModal" class="modal-backdrop">
+    <div class="modal">
+        <h2>Frying Complete</h2>
+        <div style="margin-bottom:10px;">The frying cycle is complete.</div>
+        <div class="modal-buttons">
+            <button id="confirmDoneOk" class="modal-button save-button">OK</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- =========================================================
+     ERROR (LIMIT SWITCH) MODAL
+     ========================================================= -->
+
+<div id="errorModal" class="modal-backdrop">
+
+    <div class="modal">
+
+        <h2>
+            System Error
+        </h2>
+
+        <div style="margin-bottom:10px;" id="errorMessage">
+            An unexpected error occurred.
+        </div>
+
+        <div style="font-size:12px; color:#6b7280; margin-top:6px;">Please reboot the system to recover. If the problem persists, power cycle the device and check limit switches.</div>
+
+        <div class="modal-buttons" style="margin-top:12px;">
+
+            <button id="errorReboot" class="modal-button save-button" style="width:100%;">
+                Reboot Device
             </button>
 
         </div>
@@ -1090,6 +859,44 @@ button:active {
 
 
 <script>
+
+
+/* =========================================================
+   PRODUCT RECIPES
+   ========================================================= */
+
+const products = [
+
+    {
+        product: "French Fries",
+        icon: "🍟",
+        temperature: 30,
+        duration: 5
+    },
+
+    {
+        product: "Chicken",
+        icon: "🍗",
+        temperature: 170,
+        duration: 480
+    },
+
+    {
+        product: "Fish",
+        icon: "🐟",
+        temperature: 170,
+        duration: 360
+    },
+
+    {
+        product: "Onion Rings",
+        icon: "🧅",
+        temperature: 175,
+        duration: 180
+    }
+
+];
+
 
 /* =========================================================
    WEBSOCKET
@@ -1104,6 +911,8 @@ let socket = null;
 
 let fryerState = "IDLE";
 
+let prevFryerState = "IDLE";
+
 let currentTemperature = 120;
 
 let targetTemperature = 120;
@@ -1115,6 +924,12 @@ let selectedProduct = "";
 let selectedIcon = "";
 
 let selectedDuration = 0;
+
+// Whether the basket upper limit (home) is currently reached — provided by firmware
+let upperLimit = false;
+
+// Guard to avoid sending repeated raise commands while homing is in progress
+let raiseRequested = false;
 
 
 /* =========================================================
@@ -1151,6 +966,133 @@ const connectionDot =
 const connectionText =
     document.getElementById("connectionText");
 
+// Confirm modals and buttons
+const confirmSelectModal = document.getElementById("confirmSelectModal");
+const confirmSelectName = document.getElementById("confirmSelectName");
+const confirmSelectTemp = document.getElementById("confirmSelectTemp");
+const confirmSelectDuration = document.getElementById("confirmSelectDuration");
+const confirmSelectCancel = document.getElementById("confirmSelectCancel");
+const confirmSelectConfirm = document.getElementById("confirmSelectConfirm");
+const confirmSelectHint = document.getElementById("confirmSelectHint");
+
+const confirmStartModal = document.getElementById("confirmStartModal");
+const confirmStartCancel = document.getElementById("confirmStartCancel");
+const confirmStartConfirm = document.getElementById("confirmStartConfirm");
+
+const confirmStartHint = document.getElementById("confirmStartHint");
+
+const confirmDoneModal = document.getElementById("confirmDoneModal");
+const confirmDoneOk = document.getElementById("confirmDoneOk");
+
+// Error modal (limit-switch / mechanical timeout)
+const errorModal = document.getElementById("errorModal");
+const errorMessageElement = document.getElementById("errorMessage");
+const errorDismiss = document.getElementById("errorDismiss");
+const errorReboot = document.getElementById("errorReboot");
+
+// pending selection buffer
+let pendingSelect = null;
+
+// Limit-switch watchdog
+let limitSwitchWatchStart = null;
+let limitSwitchTimer = null;
+const limitSwitchTimeoutSeconds = 30; // adjust if needed
+
+
+/* =========================================================
+   CREATE PRODUCT BUTTONS
+   ========================================================= */
+
+function createProductButtons()
+{
+    const container =
+        document.getElementById("products");
+
+
+    products.forEach(
+        function(item)
+        {
+            const button =
+                document.createElement("button");
+
+
+            button.className =
+                "product";
+
+
+            button.dataset.product =
+                item.product;
+
+
+            button.dataset.icon =
+                item.icon;
+
+
+            button.dataset.temperature =
+                item.temperature;
+
+
+            button.dataset.duration =
+                item.duration;
+
+
+            button.innerHTML =
+                `
+                <div class="product-icon">
+                    ${item.icon}
+                </div>
+
+                <div class="product-name">
+                    ${item.product}
+                </div>
+
+                <div class="product-info">
+                    ${item.temperature}°C · ${formatDuration(item.duration)}
+                </div>
+                `;
+
+
+            button.addEventListener(
+                "click",
+                function()
+                {
+                    selectProduct(
+                        item.product,
+                        item.icon,
+                        item.temperature,
+                        item.duration,
+                        button
+                    );
+                }
+            );
+
+
+            container.appendChild(
+                button
+            );
+        }
+    );
+
+
+    /* -----------------------------------------------
+       LAST MANUAL + ADD MANUAL BUTTONS
+       ----------------------------------------------- */
+
+    // Add Manual (always present)
+    const addManualButton = document.createElement("button");
+    addManualButton.className = "product manual";
+    addManualButton.id = "addManual";
+    addManualButton.innerHTML = `
+        <div class="product-icon">➕</div>
+        <div class="product-name">Add Manual</div>
+        <div class="product-info">Create custom recipe</div>
+    `;
+    addManualButton.addEventListener("click", function() { openManualEntry(); });
+    container.appendChild(addManualButton);
+
+    // The 'Last Manual' button is created/updated by loadManualRecipe()/updateLastManualButton()
+}
+
 
 /* =========================================================
    WEBSOCKET CONNECT
@@ -1161,10 +1103,12 @@ function connectWebSocket()
     const host =
         window.location.hostname;
 
+
     const protocol =
         window.location.protocol === "https:"
             ? "wss:"
             : "ws:";
+
 
     const url =
         protocol +
@@ -1172,10 +1116,12 @@ function connectWebSocket()
         host +
         "/ws";
 
+
     console.log(
         "Connecting to:",
         url
     );
+
 
     socket =
         new WebSocket(url);
@@ -1187,7 +1133,9 @@ function connectWebSocket()
             "WebSocket connected"
         );
 
+
         setConnection(true);
+
 
         sendCommand({
             command: "status"
@@ -1201,7 +1149,9 @@ function connectWebSocket()
             "WebSocket disconnected"
         );
 
+
         setConnection(false);
+
 
         setTimeout(
             connectWebSocket,
@@ -1217,6 +1167,7 @@ function connectWebSocket()
             error
         );
 
+
         setConnection(false);
     };
 
@@ -1227,6 +1178,7 @@ function connectWebSocket()
         {
             const data =
                 JSON.parse(event.data);
+
 
             handleMessage(data);
         }
@@ -1253,9 +1205,11 @@ function setConnection(online)
             "offline"
         );
 
+
         connectionDot.classList.add(
             "online"
         );
+
 
         connectionText.textContent =
             "ESP32 ONLINE";
@@ -1266,9 +1220,11 @@ function setConnection(online)
             "online"
         );
 
+
         connectionDot.classList.add(
             "offline"
         );
+
 
         connectionText.textContent =
             "ESP32 OFFLINE";
@@ -1312,35 +1268,211 @@ function handleMessage(data)
     }
 
 
-    /* -----------------------------------------------
-       MACHINE DATA
-       ----------------------------------------------- */
+     /* -----------------------------------------------
+         MACHINE DATA
+         ----------------------------------------------- */
 
-    fryerState =
-        data.state || "IDLE";
+     const previousFryerState = fryerState;
+
+     fryerState = data.state || "IDLE";
+
 
     currentTemperature =
         Number(data.temperature || 0);
 
+
     targetTemperature =
         Number(data.target || 0);
+
 
     remainingTime =
         Number(data.remaining || 0);
 
+
     selectedProduct =
         data.product || "";
 
+
     selectedIcon =
         data.icon || "";
+
+    // upper limit (home) flag from firmware
+    upperLimit = !!data.upper;
+
+    // If confirm select modal is visible, react to homing state:
+    if (confirmSelectModal && confirmSelectModal.classList.contains("show")) {
+        if (upperLimit) {
+            // homed: enable confirm and clear hint
+            if (confirmSelectConfirm) confirmSelectConfirm.disabled = false;
+            if (confirmSelectHint) confirmSelectHint.textContent = "";
+            raiseRequested = false;
+        } else {
+            // not homed: disable confirm, show hint and request raise once
+            if (confirmSelectConfirm) confirmSelectConfirm.disabled = true;
+            if (confirmSelectHint) confirmSelectHint.textContent = "Raising basket — please wait";
+
+            if (!raiseRequested) {
+                sendCommand({ command: "raise" });
+                raiseRequested = true;
+            }
+        }
+    }
+
+    // Harmonize confirm button state based on homing/upper limit
+    if (confirmSelectModal && confirmSelectModal.classList.contains("show") && confirmSelectConfirm) {
+        if (fryerState === "RAISING" || !upperLimit) {
+            confirmSelectConfirm.disabled = true;
+            if (confirmSelectHint) confirmSelectHint.textContent = "Raising basket — please wait";
+        } else {
+            confirmSelectConfirm.disabled = false;
+            if (confirmSelectHint) confirmSelectHint.textContent = "";
+            raiseRequested = false;
+        }
+    }
+
+    // If the Start confirmation modal is visible, apply the same homing
+    // behavior: disable Start while basket is being raised and request
+    // a raise from the UI once.
+    if (confirmStartModal && confirmStartModal.classList.contains("show")) {
+        if (upperLimit) {
+            if (confirmStartConfirm) confirmStartConfirm.disabled = false;
+            if (confirmStartHint) confirmStartHint.textContent = "";
+            raiseRequested = false;
+        } else {
+            if (confirmStartConfirm) confirmStartConfirm.disabled = true;
+            if (confirmStartHint) confirmStartHint.textContent = "Raising basket — please wait";
+
+            if (!raiseRequested) {
+                sendCommand({ command: "raise" });
+                raiseRequested = true;
+            }
+        }
+    }
+
+    if (confirmStartModal && confirmStartModal.classList.contains("show") && confirmStartConfirm) {
+        if (fryerState === "RAISING" || !upperLimit) {
+            confirmStartConfirm.disabled = true;
+            if (confirmStartHint) confirmStartHint.textContent = "Raising basket — please wait";
+        } else {
+            confirmStartConfirm.disabled = false;
+            if (confirmStartHint) confirmStartHint.textContent = "";
+            raiseRequested = false;
+        }
+    }
+
+    // If firmware reported a specific fault, show a descriptive modal
+    if (data.fault)
+    {
+        const code = String(data.fault);
+        let userMsg = "An unexpected error occurred.";
+
+        switch (code)
+        {
+            case "PT100_FAULT":
+                userMsg = "Temperature sensor (PT100) fault detected. Check probe and wiring.";
+                break;
+            case "PT100_INVALID":
+                userMsg = "Invalid temperature reading from sensor. Check probe and wiring.";
+                break;
+            case "LOWERING_TIMEOUT":
+                userMsg = "Lowering timeout: basket did not reach lower limit. Check motor/limit switch.";
+                break;
+            case "RAISING_TIMEOUT":
+                userMsg = "Raising timeout: basket did not reach upper limit. Check motor/limit switch.";
+                break;
+            default:
+                userMsg = "Fault: " + code;
+                break;
+        }
+
+        if (errorMessageElement)
+            errorMessageElement.textContent = userMsg + "\nPlease reboot the device and inspect the hardware.";
+
+        if (errorModal)
+            errorModal.classList.add("show");
+    }
 
 
     /* -----------------------------------------------
        UPDATE DISPLAY
        ----------------------------------------------- */
 
+
+// --------------------------------------------------
+// Confirm select modal handlers
+// --------------------------------------------------
+if (confirmSelectCancel) {
+    confirmSelectCancel.addEventListener("click", function() {
+        pendingSelect = null;
+        confirmSelectModal.classList.remove("show");
+    });
+}
+
+if (confirmSelectConfirm) {
+    confirmSelectConfirm.addEventListener("click", function() {
+        if (pendingSelect) {
+            sendCommand({
+                command: "select",
+                product: pendingSelect.product,
+                icon: pendingSelect.icon,
+                temperature: pendingSelect.temperature,
+                duration: pendingSelect.duration
+            });
+        }
+
+        pendingSelect = null;
+        confirmSelectModal.classList.remove("show");
+    });
+}
+
+// --------------------------------------------------
+// Confirm start modal handlers
+// --------------------------------------------------
+if (confirmStartCancel) {
+    confirmStartCancel.addEventListener("click", function() {
+        confirmStartModal.classList.remove("show");
+    });
+}
+
+if (confirmStartConfirm) {
+    confirmStartConfirm.addEventListener("click", function() {
+        sendCommand({ command: "start" });
+        confirmStartModal.classList.remove("show");
+    });
+}
+
+// --------------------------------------------------
+// Confirm done modal
+// --------------------------------------------------
+if (confirmDoneOk) {
+    confirmDoneOk.addEventListener("click", function() {
+        confirmDoneModal.classList.remove("show");
+    });
+}
+
+// --------------------------------------------------
+// Error modal handlers
+// --------------------------------------------------
+if (errorDismiss) {
+    errorDismiss.addEventListener("click", function() {
+        if (errorModal)
+            errorModal.classList.remove("show");
+    });
+}
+
+if (errorReboot) {
+    errorReboot.addEventListener("click", function() {
+        // Attempt soft reboot via ESP32 command if supported
+        sendCommand({ command: "reboot" });
+
+        // Also inform user to power-cycle if reboot doesn't work
+        if (errorModal)
+            errorModal.classList.remove("show");
+    });
+}
     temperatureElement.textContent =
         currentTemperature.toFixed(1);
+
 
     targetElement.textContent =
         targetTemperature.toFixed(0) + "°C";
@@ -1357,23 +1489,35 @@ function handleMessage(data)
             " " +
             selectedProduct;
 
-        recipeNameElement.textContent =
-            selectedProduct;
+        if (recipeNameElement)
+        {
+            recipeNameElement.textContent =
+                selectedProduct;
+        }
 
-        recipeTargetElement.textContent =
-            targetTemperature.toFixed(0) +
-            "°C";
+        if (recipeTargetElement)
+        {
+            recipeTargetElement.textContent =
+                targetTemperature.toFixed(0) +
+                "°C";
+        }
     }
     else
     {
         productSelectedElement.textContent =
             "No recipe selected";
 
-        recipeNameElement.textContent =
-            "None";
+        if (recipeNameElement)
+        {
+            recipeNameElement.textContent =
+                "None";
+        }
 
-        recipeTargetElement.textContent =
-            "--";
+        if (recipeTargetElement)
+        {
+            recipeTargetElement.textContent =
+                "--";
+        }
     }
 
 
@@ -1403,6 +1547,64 @@ function handleMessage(data)
        ----------------------------------------------- */
 
     updateControlButton();
+
+    // Update System Status area: show product/temp/timer only when frying
+    if (fryerState === "FRYING") {
+        productSelectedElement.innerHTML =
+            (selectedIcon ? (selectedIcon + " ") : "") +
+            (selectedProduct || "-") +
+            "<br><span style=\"color:#6b7280; font-size:12px\">" + (targetTemperature ? targetTemperature.toFixed(0) + "°C" : "--°C") + "</span><br><span style=\"font-weight:700\">" + formatDuration(remainingTime) + "</span>";
+    } else {
+        // hide saved recipe area when not frying
+        productSelectedElement.textContent = "";
+    }
+
+    // Show completion modal when leaving FRYING state
+    if (previousFryerState === "FRYING" && fryerState !== "FRYING") {
+        if (confirmDoneModal)
+            confirmDoneModal.classList.add("show");
+    }
+
+    /* -----------------------------------------------
+       LIMIT SWITCH / MOTION WATCHDOG
+       Start a watchdog while LOWERING/RAISING to detect
+       failure to reach limit switch in time and show
+       an instructive modal rather than allowing the UI
+       to become unresponsive.
+    ----------------------------------------------- */
+    if (fryerState === "LOWERING" || fryerState === "RAISING")
+    {
+        // start watchdog if not running
+        if (!limitSwitchWatchStart)
+        {
+            limitSwitchWatchStart = Date.now();
+
+            // poll once per second
+            limitSwitchTimer = setInterval(function() {
+                const elapsed = Math.floor((Date.now() - limitSwitchWatchStart) / 1000);
+
+                if (elapsed >= limitSwitchTimeoutSeconds)
+                {
+                    // show error modal with specific message
+                    const msg = (fryerState === "LOWERING" ? "Lowering basket did not reach limit switch in time." : "Raising basket did not reach limit switch in time.");
+
+                    if (errorMessageElement)
+                        errorMessageElement.textContent = msg + "\nPlease reboot the device and inspect the limit switches.";
+
+                    if (errorModal)
+                        errorModal.classList.add("show");
+
+                    // stop watchdog so modal isn't spammed
+                    clearLimitSwitchWatch();
+                }
+            }, 1000);
+        }
+    }
+    else
+    {
+        // clear watchdog when leaving motion states
+        clearLimitSwitchWatch();
+    }
 }
 
 
@@ -1414,18 +1616,11 @@ function updateStatusText()
 {
     switch (fryerState)
     {
+
         case "IDLE":
 
-            if (selectedProduct)
-            {
-                statusElement.textContent =
-                    "SELECT PRODUCT";
-            }
-            else
-            {
-                statusElement.textContent =
-                    "SELECT PRODUCT";
-            }
+            statusElement.textContent =
+                "IDLE - SELECT PRODUCT TO START";
 
             break;
 
@@ -1496,13 +1691,16 @@ function updateTimer()
                 remainingTime / 60
             );
 
+
         const seconds =
             remainingTime % 60;
+
 
         timerElement.textContent =
             String(minutes).padStart(2, "0") +
             ":" +
             String(seconds).padStart(2, "0");
+
 
         return;
     }
@@ -1524,71 +1722,40 @@ function updateTimer()
 
 function updateControlButton()
 {
-    controlButton.disabled = false;
+    // Default: non-actionable appearance
+    controlButton.classList.remove("actionable");
+    controlButton.disabled = true;
 
-
-    switch (fryerState)
-    {
-
+    switch (fryerState) {
         case "IDLE":
-
-            controlButton.textContent =
-                "SELECT PRODUCT";
-
-            /*
-               No recipe is waiting for START in IDLE.
-               Product selection is done using the
-               product cards.
-            */
-
+            controlButton.textContent = "SELECT PRODUCT";
+            controlButton.disabled = true;
             break;
-
 
         case "PREHEATING":
-
-            controlButton.textContent =
-                "STOP";
-
+            controlButton.textContent = "STOP";
+            controlButton.disabled = false;
+            controlButton.classList.add("actionable");
             break;
-
 
         case "READY":
-
-            controlButton.textContent =
-                "START";
-
+            controlButton.textContent = "START";
+            controlButton.disabled = false;
+            controlButton.classList.add("actionable");
             break;
-
 
         case "LOWERING":
-
-            controlButton.textContent =
-                "STOP";
-
-            break;
-
-
         case "FRYING":
-
-            controlButton.textContent =
-                "STOP";
-
-            break;
-
-
         case "RAISING":
-
-            controlButton.textContent =
-                "STOP";
-
+            controlButton.textContent = "STOP";
+            controlButton.disabled = false;
+            controlButton.classList.add("actionable");
             break;
-
 
         default:
-
-            controlButton.textContent =
-                "STOP";
-
+            controlButton.textContent = "STOP";
+            controlButton.disabled = false;
+            controlButton.classList.add("actionable");
             break;
     }
 }
@@ -1718,8 +1885,10 @@ function selectProduct(
     selectedProduct =
         product;
 
+
     selectedIcon =
         icon;
+
 
     selectedDuration =
         duration;
@@ -1730,15 +1899,18 @@ function selectProduct(
         product
     );
 
+
     localStorage.setItem(
         "smartFryerIcon",
         icon
     );
 
+
     localStorage.setItem(
         "smartFryerTemperature",
         temperature
     );
+
 
     localStorage.setItem(
         "smartFryerDuration",
@@ -1746,150 +1918,55 @@ function selectProduct(
     );
 
 
-    /*
-       Send recipe to ESP32.
-       
-       IMPORTANT:
-       This command causes the ESP32 to:
-       
-       1. Save the recipe
-       2. Set target temperature
-       3. Start PREHEATING
-       
-       It does NOT start frying.
-    */
-
-    sendCommand({
-        command: "select",
+    /* Preview confirmation before sending recipe */
+    pendingSelect = {
         product: product,
         icon: icon,
         temperature: temperature,
         duration: duration
-    });
-}
+    };
 
-
-/* =========================================================
-   PRODUCT CLICK HANDLERS
-   ========================================================= */
-
-document
-    .querySelectorAll(
-        ".product[data-product]"
-    )
-    .forEach(
-        function(button)
-        {
-            button.addEventListener(
-                "click",
-                function()
-                {
-                    const product =
-                        button.dataset.product;
-
-                    const icon =
-                        button.dataset.icon;
-
-                    const temperature =
-                        Number(
-                            button.dataset.temperature
-                        );
-
-                    const duration =
-                        Number(
-                            button.dataset.duration
-                        );
-
-
-                    selectProduct(
-                        product,
-                        icon,
-                        temperature,
-                        duration,
-                        button
-                    );
-                }
-            );
-        }
-    );
-
-
-/* =========================================================
-   CONTROL BUTTON
-   ========================================================= */
-
-controlButton.addEventListener(
-    "click",
-    function()
-    {
-        /*
-           READY is the ONLY state where
-           this button sends START.
-        */
-
-        if (fryerState === "READY")
-        {
-            console.log(
-                "START pressed"
-            );
-
-            /*
-               IMPORTANT:
-               Only send START.
-               
-               Do NOT send product,
-               temperature or duration.
-               
-               ESP32 already has the saved recipe.
-            */
-
-            sendCommand({
-                command: "start"
-            });
-
-            return;
+    if (confirmSelectName) {
+        confirmSelectName.textContent = product;
+        confirmSelectTemp.textContent = temperature + "°C";
+        confirmSelectDuration.textContent = formatDuration(duration);
+        // If the system is currently homing/raising, disable the confirm button
+        if (confirmSelectConfirm) {
+            if (fryerState === "RAISING") {
+                confirmSelectConfirm.disabled = true;
+                if (confirmSelectHint) confirmSelectHint.textContent = "Homing: wait until basket is raised to confirm.";
+            } else {
+                confirmSelectConfirm.disabled = false;
+                if (confirmSelectHint) confirmSelectHint.textContent = "";
+            }
         }
 
+        // If the basket is not homed, request a raise and keep Confirm disabled
+        if (!upperLimit) {
+            if (confirmSelectConfirm) confirmSelectConfirm.disabled = true;
+            if (confirmSelectHint) confirmSelectHint.textContent = "Raising basket — please wait";
 
-        /*
-           STOP during active states.
-        */
-
-        if (
-            fryerState === "PREHEATING" ||
-            fryerState === "LOWERING" ||
-            fryerState === "FRYING" ||
-            fryerState === "RAISING"
-        )
-        {
-            console.log(
-                "STOP pressed"
-            );
-
-            sendCommand({
-                command: "stop"
-            });
-
-            return;
+            if (!raiseRequested) {
+                sendCommand({ command: "raise" });
+                raiseRequested = true;
+            }
+        } else {
+            if (confirmSelectConfirm) confirmSelectConfirm.disabled = false;
+            if (confirmSelectHint) confirmSelectHint.textContent = "";
         }
 
-
-        /*
-           IDLE:
-           Product selection is done using
-           the product cards.
-        */
-
-        if (fryerState === "IDLE")
-        {
-            console.log(
-                "Select a product first"
-            );
-
-            return;
-        }
+        confirmSelectModal.classList.add("show");
+    } else {
+        // fallback: send immediately
+        sendCommand({
+            command: "select",
+            product: product,
+            icon: icon,
+            temperature: temperature,
+            duration: duration
+        });
     }
-);
+}
 
 
 /* =========================================================
@@ -1901,15 +1978,18 @@ const manualModal =
         "manualModal"
     );
 
+
 const manualName =
     document.getElementById(
         "manualName"
     );
 
+
 const manualTemperature =
     document.getElementById(
         "manualTemperature"
     );
+
 
 const manualDuration =
     document.getElementById(
@@ -1917,43 +1997,44 @@ const manualDuration =
     );
 
 
-document
-    .getElementById("manualProduct")
-    .addEventListener(
-        "click",
-        function()
-        {
-            if (fryerState !== "IDLE")
-            {
-                return;
-            }
+/* =========================================================
+   OPEN MANUAL ENTRY
+   ========================================================= */
+
+function openManualEntry()
+{
+    if (fryerState !== "IDLE")
+    {
+        return;
+    }
 
 
-            /*
-               Restore previous manual recipe.
-            */
+    /*
+       Restore previous manual recipe.
+    */
 
-            manualName.value =
-                localStorage.getItem(
-                    "manualName"
-                ) || "";
-
-            manualTemperature.value =
-                localStorage.getItem(
-                    "manualTemperature"
-                ) || "175";
-
-            manualDuration.value =
-                localStorage.getItem(
-                    "manualDuration"
-                ) || "180";
+    manualName.value =
+        localStorage.getItem(
+            "manualName"
+        ) || "";
 
 
-            manualModal.classList.add(
-                "show"
-            );
-        }
+    manualTemperature.value =
+        localStorage.getItem(
+            "manualTemperature"
+        ) || "175";
+
+
+    manualDuration.value =
+        localStorage.getItem(
+            "manualDuration"
+        ) || "180";
+
+
+    manualModal.classList.add(
+        "show"
     );
+}
 
 
 /* =========================================================
@@ -1986,10 +2067,12 @@ document
             const name =
                 manualName.value.trim();
 
+
             const temperature =
                 Number(
                     manualTemperature.value
                 );
+
 
             const duration =
                 Number(
@@ -2002,6 +2085,7 @@ document
                 alert(
                     "Please enter a product name."
                 );
+
 
                 return;
             }
@@ -2016,6 +2100,7 @@ document
                     "Temperature must be between 120°C and 220°C."
                 );
 
+
                 return;
             }
 
@@ -2027,6 +2112,7 @@ document
                 alert(
                     "Please enter a valid frying time."
                 );
+
 
                 return;
             }
@@ -2041,10 +2127,12 @@ document
                 name
             );
 
+
             localStorage.setItem(
                 "manualTemperature",
                 temperature
             );
+
 
             localStorage.setItem(
                 "manualDuration",
@@ -2052,24 +2140,19 @@ document
             );
 
 
-            manualModal.classList.remove(
-                "show"
-            );
+            manualModal.classList.remove("show");
 
+            /* Save recipe and automatically begin preheating. */
 
-            /*
-               Save recipe and automatically
-               begin preheating.
-            */
+            // Ensure the last-manual button exists/updated, then select it
+            updateLastManualButton();
 
             selectProduct(
                 name,
                 "⚙️",
                 temperature,
                 duration,
-                document.getElementById(
-                    "manualProduct"
-                )
+                document.getElementById("lastManual")
             );
         }
     );
@@ -2081,52 +2164,48 @@ document
 
 function loadManualRecipe()
 {
-    const name =
-        localStorage.getItem(
-            "manualName"
-        );
-
-    const temperature =
-        localStorage.getItem(
-            "manualTemperature"
-        );
-
-    const duration =
-        localStorage.getItem(
-            "manualDuration"
-        );
+    // Create or update the last-manual button if a manual recipe exists.
+    updateLastManualButton();
+}
 
 
-    if (name)
-    {
-        document
-            .getElementById(
-                "manualProduct"
-            )
-            .querySelector(
-                ".product-name"
-            )
-            .textContent =
-            name;
-    }
+function updateLastManualButton()
+{
+    const name = localStorage.getItem("manualName");
+    const temperature = localStorage.getItem("manualTemperature");
+    const duration = localStorage.getItem("manualDuration");
+    const container = document.getElementById("products");
 
+    // remove existing lastManual if present (we'll recreate)
+    const existing = document.getElementById("lastManual");
+    if (existing) existing.remove();
 
-    if (temperature && duration)
-    {
-        document
-            .getElementById(
-                "manualProduct"
-            )
-            .querySelector(
-                ".product-info"
-            )
-            .textContent =
-            temperature +
-            "°C · " +
-            formatDuration(
-                Number(duration)
-            );
-    }
+    if (!name) return;
+
+    const btn = document.createElement("button");
+    btn.className = "product";
+    btn.id = "lastManual";
+    btn.dataset.product = name;
+    btn.dataset.icon = "⚙️";
+    btn.dataset.temperature = temperature || 175;
+    btn.dataset.duration = duration || 180;
+
+    btn.innerHTML = `
+        <div class="product-icon">⚙️</div>
+        <div class="product-name">${name}</div>
+        <div class="product-info">${(temperature||'--')}°C · ${formatDuration(Number(duration)||0)}</div>
+    `;
+
+    btn.addEventListener("click", function() {
+        selectProduct(btn.dataset.product, btn.dataset.icon, Number(btn.dataset.temperature), Number(btn.dataset.duration), btn);
+    });
+
+    // insert the last-manual before the add manual button if present
+    const addBtn = document.getElementById("addManual");
+    if (addBtn && addBtn.parentNode)
+        addBtn.parentNode.insertBefore(btn, addBtn);
+    else
+        container.appendChild(btn);
 }
 
 
@@ -2137,7 +2216,10 @@ function loadManualRecipe()
 function formatDuration(seconds)
 {
     const minutes =
-        Math.floor(seconds / 60);
+        Math.floor(
+            seconds / 60
+        );
+
 
     const remainingSeconds =
         seconds % 60;
@@ -2154,8 +2236,114 @@ function formatDuration(seconds)
 
 
 /* =========================================================
+   CONTROL BUTTON
+   ========================================================= */
+
+controlButton.addEventListener(
+    "click",
+    function()
+    {
+        /*
+           READY is the ONLY state where
+           this button sends START.
+        */
+
+        if (fryerState === "READY")
+        {
+            console.log("START pressed");
+
+            // show confirm start modal
+            if (confirmStartModal) {
+                // If not homed, request raise and keep Start disabled until homed
+                if (!upperLimit) {
+                    if (confirmStartConfirm) confirmStartConfirm.disabled = true;
+                    if (confirmStartHint) confirmStartHint.textContent = "Raising basket — please wait";
+
+                    if (!raiseRequested) {
+                        sendCommand({ command: "raise" });
+                        raiseRequested = true;
+                    }
+                } else {
+                    if (confirmStartConfirm) confirmStartConfirm.disabled = false;
+                    if (confirmStartHint) confirmStartHint.textContent = "";
+                }
+
+                confirmStartModal.classList.add("show");
+            } else {
+                sendCommand({ command: "start" });
+            }
+
+            return;
+        }
+
+
+        /*
+           STOP during active states.
+        */
+
+        if (
+            fryerState === "PREHEATING" ||
+            fryerState === "LOWERING" ||
+            fryerState === "FRYING" ||
+            fryerState === "RAISING"
+        )
+        {
+            console.log(
+                "STOP pressed"
+            );
+
+
+            sendCommand({
+                command: "stop"
+            });
+
+
+            return;
+        }
+
+
+        /*
+           IDLE:
+           Product selection is done using
+           the product cards.
+        */
+
+        if (fryerState === "IDLE")
+        {
+            console.log(
+                "Select a product first"
+            );
+
+
+            return;
+        }
+    }
+);
+
+
+/* =========================================================
+   LIMIT SWITCH WATCHDOG HELPERS
+   ========================================================= */
+
+function clearLimitSwitchWatch()
+{
+    if (limitSwitchTimer)
+    {
+        clearInterval(limitSwitchTimer);
+        limitSwitchTimer = null;
+    }
+
+    limitSwitchWatchStart = null;
+}
+
+
+
+
+/* =========================================================
    STARTUP
    ========================================================= */
+
+createProductButtons();
 
 loadManualRecipe();
 
@@ -2180,6 +2368,7 @@ document.addEventListener(
 </script>
 
 </body>
+
 </html>
 )rawliteral";
 
