@@ -440,8 +440,17 @@ button:active {
     width: 360px;
     background: white;
     border-radius: 16px;
-    padding: 20px;
+    /* reserve space at bottom so content never overlaps anchored buttons */
+    padding: 20px 20px 84px;
     box-shadow: 0 15px 50px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    /* fixed visual height so all modals match and buttons stay anchored */
+    height: 220px;
+    min-height: 220px;
+    max-height: 220px;
+    overflow: hidden;
+    position: relative; /* enable absolutely-positioned buttons */
 }
 
 .modal h2 {
@@ -472,7 +481,12 @@ button:active {
 .modal-buttons {
     display: flex;
     gap: 10px;
-    margin-top: 16px;
+    height: 42px;
+    /* anchor buttons to modal bottom so their position is identical */
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
 }
 
 .modal-button {
@@ -482,6 +496,13 @@ button:active {
     border-radius: 8px;
     font-size: 14px;
     font-weight: 700;
+}
+
+.modal-hint {
+    color: #6b7280;
+    font-size: 12px;
+    min-height: 36px; /* reserve vertical space even when empty */
+    margin-top: 8px;
 }
 
 .cancel-button {
@@ -755,7 +776,7 @@ button:active {
 
         </div>
 
-        <div style="font-size:12px; color:#6b7280; margin-top:6px;">
+        <div id="manualPreview" class="modal-hint" style="font-size:12px;">
             Preview: <span id="manualDurationPreview">--:--</span>
         </div>
 
@@ -796,7 +817,7 @@ button:active {
         <div style="margin-bottom:8px;"><strong id="confirmSelectName">Product</strong></div>
         <div>Temperature: <span id="confirmSelectTemp">--°C</span></div>
         <div>Duration: <span id="confirmSelectDuration">--:--</span></div>
-        <div id="confirmSelectHint" style="color:#6b7280; font-size:12px; margin-top:8px;"></div>
+        <div id="confirmSelectHint" class="modal-hint"></div>
         <div class="modal-buttons">
             <button id="confirmSelectCancel" class="modal-button cancel-button">Cancel</button>
             <button id="confirmSelectConfirm" class="modal-button save-button">Confirm</button>
@@ -808,7 +829,7 @@ button:active {
     <div class="modal">
         <h2>Start Frying?</h2>
         <div style="margin-bottom:10px;">Are you sure you want to start the frying cycle?</div>
-        <div id="confirmStartHint" style="color:#6b7280; font-size:12px; margin-top:8px;"></div>
+        <div id="confirmStartHint" class="modal-hint"></div>
         <div class="modal-buttons">
             <button id="confirmStartCancel" class="modal-button cancel-button">Cancel</button>
             <button id="confirmStartConfirm" class="modal-button save-button">Start</button>
@@ -820,7 +841,10 @@ button:active {
     <div class="modal">
         <h2>Frying Complete</h2>
         <div style="margin-bottom:10px;">The frying cycle is complete.</div>
+        <div id="confirmDoneHint" class="modal-hint"></div>
         <div class="modal-buttons">
+            <!-- hidden placeholder so button positions match other confirm modals -->
+            <button id="confirmDoneCancel" class="modal-button cancel-button" style="visibility:hidden; pointer-events:none;">Cancel</button>
             <button id="confirmDoneOk" class="modal-button save-button">OK</button>
         </div>
     </div>
@@ -843,7 +867,7 @@ button:active {
             An unexpected error occurred.
         </div>
 
-        <div style="font-size:12px; color:#6b7280; margin-top:6px;">Please reboot the system to recover. If the problem persists, power cycle the device and check limit switches.</div>
+        <div class="modal-hint" style="font-size:12px;">Please reboot the system to recover. If the problem persists, power cycle the device and check limit switches.</div>
 
         <div class="modal-buttons" style="margin-top:12px;">
 

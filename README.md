@@ -174,3 +174,98 @@ If you want, I can:
 - Create unit-test harness scripts (host-side simulation) for the state transitions.
 
 Which follow-up should I implement first? (I recommend fixing `JsonDocument` allocations now.)
+
+## Numbered Flow Chart (use references like "Move to #X")
+
+1. IDLE — waiting for product selection. → Move to #2 on `select`.
+
+2. PREHEATING — heat to `target`. → Move to #3 when temperature reached; if sensor fault → Move to #15.
+
+3. READY — awaiting user `start`. → On `start` → Move to #4.
+
+4. CHECK_HOME — is upper limit (homed)?
+
+- Yes → Move to #5 (Lowering).
+- No → set `pendingStart=true`, play PREMOVE → Move to #6 (RAISING/Homing).
+
+1. LOWERING — drive down until lower limit.
+
+- Lower reached → Move to #7 (Frying).
+- Timeout → set `LOWERING_TIMEOUT` → Move to #13 (FAULT).
+
+1. RAISING (homing) — drive up until upper limit.
+
+- Upper reached and `pendingStart==true` → clear flag → Move to #5 (Lowering).
+- Upper reached and `pendingStart==false` → Move to #9 (Idle after raise).
+- Timeout → set `RAISING_TIMEOUT` → Move to #14 (FAULT).
+
+1. FRYING — maintain temp, decrement timer.
+
+- Timer > 0 → stay in #7.
+- Timer == 0 → play DONE tone → Move to #8.
+- PT100 fault → set `PT100_FAULT`/`PT100_INVALID` → Move to #15 (FAULT).
+- Over-target (target + offset) → set `OVERTEMP` → Move to #16 (FAULT).
+- Absolute max exceeded → set `ABS_OVERTEMP` → Move to #16 (FAULT, fatal).
+- Runaway detected (rapid rise) → set `RUNAWAY_TEMP`, auto-raise → Move to #17 (Runaway handling / FAULT).
+
+1. DONE TONE — play `BUZZER_DONE` (non-blocking). → After tone completes → Move to #6 (RAISING).
+
+2. IDLE AFTER RAISE — clear recipe, show Done modal. → Move to #1 (IDLE).
+
+3. STOP command — if upper reached → Move to #9; else → play PREMOVE → Move to #6 (RAISING).
+
+4. UI `raise` command — if not in FAULT and not upper → play PREMOVE → Move to #6; else return status.
+
+5. CLIENT CONNECTED event — play `BUZZER_CONNECTED` (no state change). → Remain in current step.
+
+6. FAULT (LOWERING_TIMEOUT) — heater off, stop motors, `lastFault=LOWERING_TIMEOUT` → Move to #18 (FAULT handling).
+
+7. FAULT (RAISING_TIMEOUT) — heater off, stop motors, `lastFault=RAISING_TIMEOUT` → Move to #18.
+
+8. FAULT (PT100) — `PT100_FAULT` or `PT100_INVALID`: heater off, `lastFault` set → Move to #18.
+
+9. FAULT (OVERTEMP / ABS_OVERTEMP) — heater off, `lastFault` set:
+
+- `ABS_OVERTEMP` treated as fatal → Move to #18 (fatal).
+- `OVERTEMP` treated as non-fatal FAULT → Move to #18.
+
+ 1. RUNAWAY_TEMP — immediate heater off, `lastFault=RUNAWAY_TEMP`, auto-raise if possible → if raised → Move to #18; if already raised → Move to #18.
+
+ 2. FAULT STATE — UI shows error modal:
+
+- If fatal (`ABS_OVERTEMP`) → play `BUZZER_FATAL` (continuous), modal is reboot-only → operator must reboot → Move to #19.
+- If non-fatal → play `BUZZER_ERROR` (three beeps), allow `clearFault` only when safe (temp low & homed) → on clear → Move to #1.
+
+ 1. REBOOT — soft restart (`ESP.restart()`); after restart → Move to #1.
+
+(Use step numbers above in UI/maintenance logs: e.g., “Motion aborted — Move to #13”.)
+
+## Daily Log (2026-09-21)
+
+Today I made a set of UI and firmware edits to improve safety, UX, and buzzer feedback. Summary:
+
+- UI modals and layout
+  - Fixed modal height consistency and anchored modal action buttons so positions no longer shift when hint text is present.
+  - Added `.modal-hint` areas and adjusted modal padding to prevent overlap between hint text and buttons.
+  - Ensured the Done modal matches Confirm modals (consistent button placement and reserved hint area).
+
+- Buzzer: new sequences and integration
+  - Added new buzzer modes (`BUZZER_STARTUP`, `BUZZER_CONNECTED`, `BUZZER_PREMOVE`, `BUZZER_LOWERED`, `BUZZER_RAISED`, `BUZZER_FATAL`) and refined `BUZZER_ERROR`/`BUZZER_ALARM` patterns in `src/buzzer.h`.
+  - Implemented non-blocking state machines for the tones (millis()-based, `step` driven).
+  - Wired buzzer events in `src/main.cpp`: startup tone, client-connected tone, PREMOVE warning before motion, lowered/raised confirmations, frying-done tone (plays before auto-raise), and fatal vs non-fatal fault selection.
+  - Added pending flags so motions that need a warning tone occur after the tone finishes (e.g., PREMOVE -> lowering/raising; DONE -> raise).
+
+- Safety & firmware fixes
+  - Limit switch debounce logic already present (software non-blocking debounce, `LIMIT_DEBOUNCE_MS`) retained and used by UI via the `upper` flag in status JSON.
+  - Status broadcasting uses `StaticJsonDocument<256>` to avoid heap allocation for status messages sent over WebSocket.
+
+- Next verification tasks
+  - Verify modal appearance in browser (UI): confirm buttons align and no overlaps across Select/Start/Done modals.
+  - Test buzzer sequences on hardware and tune durations/volumes as needed.
+  - Address AsyncWebServer `send_P` deprecation warning (recommended but not yet changed).
+
+If you want, I can now (pick one):
+
+- run the small patch to replace `request->send_P` with the recommended API,
+- tune buzzer timings after you test hardware, or
+- add the `clearFault` handler so some faults can be cleared without reboot.
