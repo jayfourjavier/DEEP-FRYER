@@ -1,11 +1,12 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <ESPAsyncWebServer.h>
-#include <ArduinoJson.h>
-#include <Adafruit_MAX31865.h>
+#include "ESPAsyncWebServer.h"
+#include "ArduinoJson.h"
+#include "Adafruit_MAX31865.h"
 
 #include "Relay.h"
 #include "Buzzer.h"
+#include "LimitSwitch.h"
 #include "webpage.h"
 
 // ==================================================================================================================================================
@@ -38,9 +39,9 @@ IPAddress AP_SUBNET(255, 255, 255, 0);
 #define LIMIT_ACTIVE LOW
 
 // Set these above the normal mechanical travel time of the basket.
+#define BASKET_LOWERING_TIMEOUT_SECONDS 30UL // LOWERING BASKET TIMEOUT IN SECONDS
+#define BASKET_RAISING_TIMEOUT_SECONDS 30UL  // RAISING BASKET TIMEOUT IN SECONDS
 #define SECONDS_TO_MILLIS(seconds) ((unsigned long)(seconds) * 1000UL)
-#define BASKET_LOWERING_TIMEOUT_SECONDS 20UL
-#define BASKET_RAISING_TIMEOUT_SECONDS 20UL
 #define BASKET_LOWERING_TIMEOUT_MS SECONDS_TO_MILLIS(BASKET_LOWERING_TIMEOUT_SECONDS)
 #define BASKET_RAISING_TIMEOUT_MS SECONDS_TO_MILLIS(BASKET_RAISING_TIMEOUT_SECONDS)
 
@@ -48,8 +49,8 @@ IPAddress AP_SUBNET(255, 255, 255, 0);
 // PT100
 // ==================================================================================================================================================
 
-#define RREF 430.0
-#define RNOMINAL 100.0
+#define RREF 430.0     // Reference resistor value in ohms
+#define RNOMINAL 100.0 // Nominal resistance of PT100 at 0°C in ohms
 
 Adafruit_MAX31865 pt100(PT100_CS_PIN);
 
@@ -67,8 +68,8 @@ Buzzer buzzer(BUZZER_PIN, "Buzzer", false);
 // WEB SERVER
 // ==================================================================================================================================================
 
-AsyncWebServer server(80);
-AsyncWebSocket ws("/ws");
+AsyncWebServer server(80); // HTTP server on port 80
+AsyncWebSocket ws("/ws");  // WebSocket endpoint at /ws
 
 // ==================================================================================================================================================
 // FRYER STATES
@@ -76,13 +77,13 @@ AsyncWebSocket ws("/ws");
 
 enum FryerState
 {
-    IDLE,
-    PREHEATING,
-    READY,
-    LOWERING,
-    FRYING,
-    RAISING,
-    FAULT
+    IDLE,       // Waiting for user to select product and start
+    PREHEATING, // Heating to target temperature
+    READY,      // Ready to start frying (temperature reached)
+    LOWERING,   // Lowering basket into oil
+    FRYING,     // Frying in progress
+    RAISING,    // Raising basket out of oil
+    FAULT       // Fault state (temperature sensor fault, limit switch fault, etc.)
 };
 
 FryerState fryerState = IDLE;
@@ -115,9 +116,8 @@ int remainingTime = 0;
 float currentTemperature = 120.0;
 bool temperatureValid = false;
 
-const float IDLE_TEMPERATURE = 120.0;
-
-const float HEATER_ON_OFFSET = 2.0;
+const float IDLE_TEMPERATURE = 120.0; // temperature to maintain when idle (to keep oil warm)
+const float HEATER_ON_OFFSET = 2.0;   // degrees below target to turn heater on (hysteresis)
 
 // ==================================================================================================================================================
 // OVERTEMPERATURE / RUNAWAY SAFEGUARDS
@@ -278,67 +278,17 @@ void setFryerState(FryerState newState)
 // Debounce configuration for mechanical limit switches
 const unsigned long LIMIT_DEBOUNCE_MS = 50UL; // 50 ms debounce
 
-// Upper limit debounce state
-int upper_last_raw = HIGH;
-unsigned long upper_last_change_ms = 0;
-bool upper_stable = false;
-
-// Lower limit debounce state
-int lower_last_raw = HIGH;
-unsigned long lower_last_change_ms = 0;
-bool lower_stable = false;
+DebouncedLimitSwitch upperLimitSwitch(UPPER_LIMIT_PIN, "Upper", LIMIT_ACTIVE, LIMIT_DEBOUNCE_MS);
+DebouncedLimitSwitch lowerLimitSwitch(LOWER_LIMIT_PIN, "Lower", LIMIT_ACTIVE, LIMIT_DEBOUNCE_MS);
 
 bool upperLimitReached()
 {
-    int raw = digitalRead(UPPER_LIMIT_PIN);
-
-    if (raw != upper_last_raw)
-    {
-        // raw changed — reset timer
-        upper_last_change_ms = millis();
-        upper_last_raw = raw;
-    }
-    else
-    {
-        // raw stable — if stable for debounce window, commit
-        if ((millis() - upper_last_change_ms) >= LIMIT_DEBOUNCE_MS)
-        {
-            bool newStable = (raw == LIMIT_ACTIVE);
-            if (newStable != upper_stable)
-            {
-                upper_stable = newStable;
-                // optional: log change
-                Serial.printf("[LIMIT] Upper debounced -> %s\n", upper_stable ? "ACTIVE" : "INACTIVE");
-            }
-        }
-    }
-
-    return upper_stable;
+    return upperLimitSwitch.isActive();
 }
 
 bool lowerLimitReached()
 {
-    int raw = digitalRead(LOWER_LIMIT_PIN);
-
-    if (raw != lower_last_raw)
-    {
-        lower_last_change_ms = millis();
-        lower_last_raw = raw;
-    }
-    else
-    {
-        if ((millis() - lower_last_change_ms) >= LIMIT_DEBOUNCE_MS)
-        {
-            bool newStable = (raw == LIMIT_ACTIVE);
-            if (newStable != lower_stable)
-            {
-                lower_stable = newStable;
-                Serial.printf("[LIMIT] Lower debounced -> %s\n", lower_stable ? "ACTIVE" : "INACTIVE");
-            }
-        }
-    }
-
-    return lower_stable;
+    return lowerLimitSwitch.isActive();
 }
 
 // ==================================================================================================================================================
@@ -1145,14 +1095,9 @@ void setup()
     pinMode(UPPER_LIMIT_PIN, INPUT_PULLUP);
     pinMode(LOWER_LIMIT_PIN, INPUT_PULLUP);
 
-    // initialize debounce state for limit switches
-    upper_last_raw = digitalRead(UPPER_LIMIT_PIN);
-    upper_last_change_ms = millis();
-    upper_stable = (upper_last_raw == LIMIT_ACTIVE);
-
-    lower_last_raw = digitalRead(LOWER_LIMIT_PIN);
-    lower_last_change_ms = millis();
-    lower_stable = (lower_last_raw == LIMIT_ACTIVE);
+    // Sample each physical switch before control logic begins.
+    upperLimitSwitch.begin();
+    lowerLimitSwitch.begin();
 
     // ========================================================
     // PT100

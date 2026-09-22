@@ -263,9 +263,3 @@ Today I made a set of UI and firmware edits to improve safety, UX, and buzzer fe
   - Verify modal appearance in browser (UI): confirm buttons align and no overlaps across Select/Start/Done modals.
   - Test buzzer sequences on hardware and tune durations/volumes as needed.
   - Address AsyncWebServer `send_P` deprecation warning (recommended but not yet changed).
-
-If you want, I can now (pick one):
-
-- run the small patch to replace `request->send_P` with the recommended API,
-- tune buzzer timings after you test hardware, or
-- add the `clearFault` handler so some faults can be cleared without reboot.

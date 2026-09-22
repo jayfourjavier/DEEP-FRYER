@@ -66,6 +66,12 @@ button:active {
     display: flex;
     flex-direction: column;
     background: #ffffff;
+    transition: filter 0.2s ease;
+    will-change: filter;
+}
+
+.app.blurred {
+    filter: blur(4px) saturate(0.9);
 }
 
 
@@ -232,7 +238,15 @@ button:active {
 .status {
     font-size: 22px;
     font-weight: 700;
-    margin-top: 7px;
+    margin-top: 8px;
+    line-height: 1.2;
+}
+
+.status-description {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 6px;
+    line-height: 1.4;
 }
 
 .product-selected {
@@ -305,17 +319,19 @@ button:active {
 .products {
     flex: 1;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(4, 1fr);
-    gap: 9px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(120px, 1fr));
+    gap: 10px;
     margin-top: 8px;
+    align-content: stretch;
 }
 
 .product {
     border: 1px solid #d1d5db;
     border-radius: 12px;
     background: #ffffff;
-    padding: 10px;
+    padding: 14px 12px;
+    min-height: 120px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -338,17 +354,18 @@ button:active {
 }
 
 .product-icon {
-    font-size: 27px;
+    font-size: 32px;
+    line-height: 1;
 }
 
 .product-name {
-    font-size: 14px;
+    font-size: 18px;
     font-weight: 700;
     line-height: 1.15;
 }
 
-.product-info {
-    font-size: 11px;
+.product-info {1
+    font-size: 14px;
     color: #6b7280;
 }
 
@@ -357,7 +374,7 @@ button:active {
 }
 
 .manual .product-icon {
-    font-size: 25px;
+    font-size: 28px;
 }
 
 
@@ -451,6 +468,13 @@ button:active {
     max-height: 220px;
     overflow: hidden;
     position: relative; /* enable absolutely-positioned buttons */
+}
+
+#manualModal .modal {
+    height: auto;
+    min-height: 420px;
+    max-height: 82vh;
+    overflow: auto;
 }
 
 .modal h2 {
@@ -633,7 +657,13 @@ button:active {
                 <div
                     id="status"
                     class="status">
-                    IDLE - SELECT PRODUCT TO START
+                    IDLE
+                </div>
+
+                <div
+                    id="statusDescription"
+                    class="status-description">
+                    Select a product to begin preheating.
                 </div>
 
                 <div
@@ -892,35 +922,41 @@ button:active {
 const products = [
 
     {
-        product: "French Fries",
+        product: "Fries 180 480",
         icon: "🍟",
-        temperature: 30,
-        duration: 5
+        temperature: 25,
+        duration: 60
     },
 
     {
-        product: "Chicken",
-        icon: "🍗",
-        temperature: 170,
-        duration: 480
-    },
-
-    {
-        product: "Fish",
-        icon: "🐟",
-        temperature: 170,
-        duration: 360
-    },
-
-    {
-        product: "Onion Rings",
-        icon: "🧅",
+        product: "Hotdog",
+        icon: "🌭",
         temperature: 175,
+        duration: 240
+    },
+
+    {
+        product: "Chicken Nuggets",
+        icon: "🍗",
+        temperature: 180,
         duration: 180
+    },
+
+    {
+        product: "Siomai",
+        icon: "🥟",
+        temperature: 160,
+        duration: 240
+    },
+
+    {
+        product: "Porkchop",
+        icon: "🥩",
+        temperature: 190,
+        duration: 300
     }
 
 ];
-
 
 /* =========================================================
    WEBSOCKET
@@ -969,6 +1005,9 @@ const targetElement =
 const statusElement =
     document.getElementById("status");
 
+const statusDescriptionElement =
+    document.getElementById("statusDescription");
+
 const timerElement =
     document.getElementById("timer");
 
@@ -989,6 +1028,22 @@ const connectionDot =
 
 const connectionText =
     document.getElementById("connectionText");
+
+const app = document.querySelector(".app");
+
+function updateBlurState() {
+    if (!app) {
+        return;
+    }
+
+    const anyModalVisible = Array.from(
+        document.querySelectorAll(".modal-backdrop")
+    ).some(function(modal) {
+        return modal.classList.contains("show");
+    });
+
+    app.classList.toggle("blurred", anyModalVisible);
+}
 
 // Confirm modals and buttons
 const confirmSelectModal = document.getElementById("confirmSelectModal");
@@ -1414,6 +1469,8 @@ function handleMessage(data)
 
         if (errorModal)
             errorModal.classList.add("show");
+
+        updateBlurState();
     }
 
 
@@ -1429,6 +1486,7 @@ if (confirmSelectCancel) {
     confirmSelectCancel.addEventListener("click", function() {
         pendingSelect = null;
         confirmSelectModal.classList.remove("show");
+        updateBlurState();
     });
 }
 
@@ -1446,6 +1504,7 @@ if (confirmSelectConfirm) {
 
         pendingSelect = null;
         confirmSelectModal.classList.remove("show");
+        updateBlurState();
     });
 }
 
@@ -1455,6 +1514,7 @@ if (confirmSelectConfirm) {
 if (confirmStartCancel) {
     confirmStartCancel.addEventListener("click", function() {
         confirmStartModal.classList.remove("show");
+        updateBlurState();
     });
 }
 
@@ -1462,6 +1522,7 @@ if (confirmStartConfirm) {
     confirmStartConfirm.addEventListener("click", function() {
         sendCommand({ command: "start" });
         confirmStartModal.classList.remove("show");
+        updateBlurState();
     });
 }
 
@@ -1471,6 +1532,7 @@ if (confirmStartConfirm) {
 if (confirmDoneOk) {
     confirmDoneOk.addEventListener("click", function() {
         confirmDoneModal.classList.remove("show");
+        updateBlurState();
     });
 }
 
@@ -1481,6 +1543,7 @@ if (errorDismiss) {
     errorDismiss.addEventListener("click", function() {
         if (errorModal)
             errorModal.classList.remove("show");
+        updateBlurState();
     });
 }
 
@@ -1492,6 +1555,7 @@ if (errorReboot) {
         // Also inform user to power-cycle if reboot doesn't work
         if (errorModal)
             errorModal.classList.remove("show");
+        updateBlurState();
     });
 }
     temperatureElement.textContent =
@@ -1587,6 +1651,14 @@ if (errorReboot) {
     if (previousFryerState === "FRYING" && fryerState !== "FRYING") {
         if (confirmDoneModal)
             confirmDoneModal.classList.add("show");
+
+        updateBlurState();
+    }
+
+    // Auto-close the completion modal once the basket has returned to the upper limit.
+    if (confirmDoneModal && confirmDoneModal.classList.contains("show") && upperLimit) {
+        confirmDoneModal.classList.remove("show");
+        updateBlurState();
     }
 
     /* -----------------------------------------------
@@ -1618,6 +1690,8 @@ if (errorReboot) {
                     if (errorModal)
                         errorModal.classList.add("show");
 
+                    updateBlurState();
+
                     // stop watchdog so modal isn't spammed
                     clearLimitSwitchWatch();
                 }
@@ -1638,63 +1712,48 @@ if (errorReboot) {
 
 function updateStatusText()
 {
-    switch (fryerState)
-    {
+    const statusMap = {
+        IDLE: {
+            title: "IDLE",
+            description: "Select a product to begin preheating."
+        },
+        PREHEATING: {
+            title: "PREHEATING",
+            description: "The fryer is warming the oil to the selected target temperature."
+        },
+        READY: {
+            title: "READY",
+            description: "The oil is at temperature. Press start to begin frying."
+        },
+        LOWERING: {
+            title: "LOWERING BASKET",
+            description: "The basket is moving into the oil."
+        },
+        FRYING: {
+            title: "FRYING",
+            description: "The frying cycle is active. Monitor the remaining time and oil temperature."
+        },
+        RAISING: {
+            title: "RAISING BASKET",
+            description: "The basket is returning to the upper position."
+        },
+        FAULT: {
+            title: "FAULT",
+            description: "A system fault was detected. Please inspect the fryer and reboot if needed."
+        }
+    };
 
-        case "IDLE":
+    const entry = statusMap[fryerState] || {
+        title: fryerState || "IDLE",
+        description: "System status is currently updating."
+    };
 
-            statusElement.textContent =
-                "IDLE - SELECT PRODUCT TO START";
+    if (statusElement) {
+        statusElement.textContent = entry.title;
+    }
 
-            break;
-
-
-        case "PREHEATING":
-
-            statusElement.textContent =
-                "PREHEATING";
-
-            break;
-
-
-        case "READY":
-
-            statusElement.textContent =
-                "READY — PRESS START";
-
-            break;
-
-
-        case "LOWERING":
-
-            statusElement.textContent =
-                "LOWERING BASKET";
-
-            break;
-
-
-        case "FRYING":
-
-            statusElement.textContent =
-                "FRYING";
-
-            break;
-
-
-        case "RAISING":
-
-            statusElement.textContent =
-                "RAISING BASKET";
-
-            break;
-
-
-        default:
-
-            statusElement.textContent =
-                fryerState;
-
-            break;
+    if (statusDescriptionElement) {
+        statusDescriptionElement.textContent = entry.description;
     }
 }
 
@@ -1980,6 +2039,7 @@ function selectProduct(
         }
 
         confirmSelectModal.classList.add("show");
+        updateBlurState();
     } else {
         // fallback: send immediately
         sendCommand({
@@ -2058,6 +2118,7 @@ function openManualEntry()
     manualModal.classList.add(
         "show"
     );
+    updateBlurState();
 }
 
 
@@ -2074,6 +2135,7 @@ document
             manualModal.classList.remove(
                 "show"
             );
+            updateBlurState();
         }
     );
 
@@ -2165,6 +2227,7 @@ document
 
 
             manualModal.classList.remove("show");
+            updateBlurState();
 
             /* Save recipe and automatically begin preheating. */
 
@@ -2293,6 +2356,7 @@ controlButton.addEventListener(
                 }
 
                 confirmStartModal.classList.add("show");
+                updateBlurState();
             } else {
                 sendCommand({ command: "start" });
             }
