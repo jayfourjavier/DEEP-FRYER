@@ -922,10 +922,16 @@ button:active {
 const products = [
 
     {
-        product: "Fries 180 480",
+        product: "TEST",
         icon: "🍟",
-        temperature: 25,
-        duration: 60
+        temperature: 20,
+        duration: 5
+    },
+    {
+        product: "Fries",
+        icon: "🍟",
+        temperature: 180,
+        duration: 480
     },
 
     {
@@ -1414,8 +1420,16 @@ function handleMessage(data)
     // a raise from the UI once.
     if (confirmStartModal && confirmStartModal.classList.contains("show")) {
         if (upperLimit) {
-            if (confirmStartConfirm) confirmStartConfirm.disabled = false;
-            if (confirmStartHint) confirmStartHint.textContent = "";
+            const tempOkForStart = Number(data.temperature || 0) <= Number(data.target || 0) + 5;
+
+            if (tempOkForStart) {
+                if (confirmStartConfirm) confirmStartConfirm.disabled = false;
+                if (confirmStartHint) confirmStartHint.textContent = "";
+            } else {
+                if (confirmStartConfirm) confirmStartConfirm.disabled = true;
+                if (confirmStartHint) confirmStartHint.textContent = "Cooling — wait until temp is at target +5°C";
+            }
+
             raiseRequested = false;
         } else {
             if (confirmStartConfirm) confirmStartConfirm.disabled = true;
@@ -1433,44 +1447,54 @@ function handleMessage(data)
             confirmStartConfirm.disabled = true;
             if (confirmStartHint) confirmStartHint.textContent = "Raising basket — please wait";
         } else {
-            confirmStartConfirm.disabled = false;
-            if (confirmStartHint) confirmStartHint.textContent = "";
+            const tempOkForStart = Number(data.temperature || 0) <= Number(data.target || 0) + 5;
+            confirmStartConfirm.disabled = !tempOkForStart;
+            if (confirmStartHint) confirmStartHint.textContent = tempOkForStart ? "" : "Cooling — wait until temp is at target +5°C";
             raiseRequested = false;
         }
     }
 
-    // If firmware reported a specific fault, show a descriptive modal
+    // Ignore PT100 faults for the UI modal. They should not trigger a blocking
+    // fault popup or reboot prompt, but other hardware faults can still display.
     if (data.fault)
     {
         const code = String(data.fault);
-        let userMsg = "An unexpected error occurred.";
 
-        switch (code)
+        if (code === "PT100_FAULT" || code === "PT100_INVALID")
         {
-            case "PT100_FAULT":
-                userMsg = "Temperature sensor (PT100) fault detected. Check probe and wiring.";
-                break;
-            case "PT100_INVALID":
-                userMsg = "Invalid temperature reading from sensor. Check probe and wiring.";
-                break;
-            case "LOWERING_TIMEOUT":
-                userMsg = "Lowering timeout: basket did not reach lower limit. Check motor/limit switch.";
-                break;
-            case "RAISING_TIMEOUT":
-                userMsg = "Raising timeout: basket did not reach upper limit. Check motor/limit switch.";
-                break;
-            default:
-                userMsg = "Fault: " + code;
-                break;
+            if (errorModal)
+                errorModal.classList.remove("show");
+
+            if (errorMessageElement)
+                errorMessageElement.textContent = "";
+
+            updateBlurState();
         }
+        else
+        {
+            let userMsg = "An unexpected error occurred.";
 
-        if (errorMessageElement)
-            errorMessageElement.textContent = userMsg + "\nPlease reboot the device and inspect the hardware.";
+            switch (code)
+            {
+                case "LOWERING_TIMEOUT":
+                    userMsg = "Lowering timeout: basket did not reach lower limit. Check motor/limit switch.";
+                    break;
+                case "RAISING_TIMEOUT":
+                    userMsg = "Raising timeout: basket did not reach upper limit. Check motor/limit switch.";
+                    break;
+                default:
+                    userMsg = "Fault: " + code;
+                    break;
+            }
 
-        if (errorModal)
-            errorModal.classList.add("show");
+            if (errorMessageElement)
+                errorMessageElement.textContent = userMsg + "\nPlease reboot the device and inspect the hardware.";
 
-        updateBlurState();
+            if (errorModal)
+                errorModal.classList.add("show");
+
+            updateBlurState();
+        }
     }
 
 
@@ -2338,6 +2362,17 @@ controlButton.addEventListener(
         if (fryerState === "READY")
         {
             console.log("START pressed");
+
+            const tempIsSafe = Number(currentTemperature) <= Number(targetTemperature) + 5;
+            if (!tempIsSafe) {
+                if (confirmStartModal) {
+                    if (confirmStartConfirm) confirmStartConfirm.disabled = true;
+                    if (confirmStartHint) confirmStartHint.textContent = "Cooling — wait until temp is at target +5°C";
+                    confirmStartModal.classList.add("show");
+                    updateBlurState();
+                }
+                return;
+            }
 
             // show confirm start modal
             if (confirmStartModal) {

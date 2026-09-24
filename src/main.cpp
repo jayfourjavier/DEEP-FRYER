@@ -1,8 +1,11 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include "esp_system.h"
 #include "ESPAsyncWebServer.h"
 #include "ArduinoJson.h"
 #include "Adafruit_MAX31865.h"
+#include "soc/soc.h"          //disable brownout problems
+#include "soc/rtc_cntl_reg.h" //disable brownout problems
 
 #include "Relay.h"
 #include "Buzzer.h"
@@ -39,8 +42,8 @@ IPAddress AP_SUBNET(255, 255, 255, 0);
 #define LIMIT_ACTIVE LOW
 
 // Set these above the normal mechanical travel time of the basket.
-#define BASKET_LOWERING_TIMEOUT_SECONDS 30UL // LOWERING BASKET TIMEOUT IN SECONDS
-#define BASKET_RAISING_TIMEOUT_SECONDS 30UL  // RAISING BASKET TIMEOUT IN SECONDS
+#define BASKET_LOWERING_TIMEOUT_SECONDS 60UL // LOWERING BASKET TIMEOUT IN SECONDS
+#define BASKET_RAISING_TIMEOUT_SECONDS 60UL  // RAISING BASKET TIMEOUT IN SECONDS
 #define SECONDS_TO_MILLIS(seconds) ((unsigned long)(seconds) * 1000UL)
 #define BASKET_LOWERING_TIMEOUT_MS SECONDS_TO_MILLIS(BASKET_LOWERING_TIMEOUT_SECONDS)
 #define BASKET_RAISING_TIMEOUT_MS SECONDS_TO_MILLIS(BASKET_RAISING_TIMEOUT_SECONDS)
@@ -117,7 +120,7 @@ float currentTemperature = 120.0;
 bool temperatureValid = false;
 
 const float IDLE_TEMPERATURE = 120.0; // temperature to maintain when idle (to keep oil warm)
-const float HEATER_ON_OFFSET = 2.0;   // degrees below target to turn heater on (hysteresis)
+const float HEATER_ON_OFFSET = 2.0;   // heater turns on below target by this amount
 
 // ==================================================================================================================================================
 // OVERTEMPERATURE / RUNAWAY SAFEGUARDS
@@ -212,6 +215,11 @@ void setFryerState(FryerState newState)
 {
     FryerState oldState = fryerState;
 
+    if (oldState == newState)
+    {
+        return;
+    }
+
     fryerState = newState;
     stateStartMillis = millis();
 
@@ -299,6 +307,29 @@ void stopBasketMotor()
 {
     upwardRelay.off();
     downwardRelay.off();
+}
+
+// ==================================================================================================================================================
+// TEST ACTUATOR
+// ==================================================================================================================================================
+
+void testActuator()
+{
+    if (upperLimitReached())
+    {
+        upwardRelay.on();
+        downwardRelay.off();
+        return;
+    }
+
+    if (lowerLimitReached())
+    {
+        upwardRelay.off();
+        downwardRelay.on();
+        return;
+    }
+
+    stopBasketMotor();
 }
 
 // ==================================================================================================================================================
@@ -433,9 +464,8 @@ void startFrying()
     if (!temperatureValid)
     {
         Serial.println("[START] IGNORED - INVALID TEMPERATURE");
-        lastFault = "PT100_INVALID";
-        // report fault but do not proceed
-        setFryerState(FAULT);
+        heaterRelay.off();
+        // PT100 faults are reported silently and do not trigger any modal or pause
         broadcastStatus();
         return;
     }
@@ -514,6 +544,15 @@ void readTemperature()
 
     if (millis() - lastTemperatureMillis < 250)
         return;
+
+    // Ignore PT100 readings while the basket drive motor is active because relay
+    // switching noise can generate false faults or invalid temperature samples.
+    if (upwardRelay.getState() || downwardRelay.getState())
+    {
+        lastTemperatureMillis = millis();
+        return;
+    }
+
     lastTemperatureMillis = millis();
 
     uint8_t fault = pt100.readFault();
@@ -522,10 +561,9 @@ void readTemperature()
     {
         Serial.printf("[PT100] FAULT: 0x%02X\n", fault);
         pt100.clearFault();
+        // Ignore faulty PT100 readings while the system is otherwise running.
         temperatureValid = false;
         heaterRelay.off();
-        lastFault = "PT100_FAULT";
-        setFryerState(FAULT);
         broadcastStatus();
         return;
     }
@@ -537,14 +575,42 @@ void readTemperature()
         Serial.println("[PT100] INVALID TEMPERATURE");
         temperatureValid = false;
         heaterRelay.off();
-        lastFault = "PT100_INVALID";
-        setFryerState(FAULT);
+        // PT100 invalid readings are silent and do not raise a fault modal
         broadcastStatus();
         return;
     }
 
     currentTemperature = temperature;
     temperatureValid = true;
+
+    // Idle/ready states are not thermal-fault states. If the oil is hotter than the
+    // selected product target, simply stop heating and wait for it to cool to a safe
+    // margin before allowing a new fry cycle.
+    if (fryerState == IDLE || fryerState == READY)
+    {
+        heaterRelay.off();
+
+        if (currentTemperature >= ABSOLUTE_MAX_TEMP)
+        {
+            Serial.printf("[OVERTEMP] ABSOLUTE MAX REACHED: %.1f C\n", currentTemperature);
+            heaterRelay.off();
+            lastFault = "ABS_OVERTEMP";
+            setFryerState(FAULT);
+            broadcastStatus();
+            return;
+        }
+
+        // Do not consider a warm-but-not-dangerous oil temperature a fault while
+        // waiting for the user to start. The Start button will remain disabled until
+        // temperature falls close enough to the target to be suitable for frying.
+        return;
+    }
+
+    if (fryerState == FAULT)
+    {
+        heaterRelay.off();
+        return;
+    }
 
     // -----------------------------
     // Over-temperature absolute limit
@@ -634,18 +700,21 @@ void updateHeater()
         return;
     }
 
-    if (fryerState == PREHEATING || fryerState == READY || fryerState == LOWERING || fryerState == FRYING)
+    if (!(fryerState == PREHEATING || fryerState == READY || fryerState == LOWERING || fryerState == FRYING))
     {
-        if (currentTemperature <= targetTemperature - HEATER_ON_OFFSET)
-        {
-            heaterRelay.on();
-        }
+        heaterRelay.off();
+        return;
+    }
 
-        if (currentTemperature >= targetTemperature)
-        {
-            heaterRelay.off();
-        }
+    if (currentTemperature <= targetTemperature - HEATER_ON_OFFSET)
+    {
+        heaterRelay.on();
+        return;
+    }
 
+    if (currentTemperature >= targetTemperature)
+    {
+        heaterRelay.off();
         return;
     }
 
@@ -1079,6 +1148,7 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
 void setup()
 {
     Serial.begin(115200);
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // disable brownout detector
 
     delay(500);
 
@@ -1213,6 +1283,7 @@ void setup()
 void loop()
 {
     buzzer.update();
+
     updateFryer();
 
     ws.cleanupClients();
