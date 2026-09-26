@@ -126,14 +126,11 @@ const float HEATER_ON_OFFSET = 2.0;   // heater turns on below target by this am
 // OVERTEMPERATURE / RUNAWAY SAFEGUARDS
 // ==================================================================================================================================================
 
-const float OVERTEMP_OFFSET = 20.0;            // user requested: target +20°C triggers over-temp
-const float ABSOLUTE_MAX_TEMP = 240.0;         // absolute hard limit
-const float RUNAWAY_DELTA_C = 5.0;             // rise in degrees considered runaway
-const unsigned long RUNAWAY_WINDOW_MS = 10000; // window to measure rise (10s)
+const float OVERTEMP_OFFSET = 20.0;                  // user requested: target +20°C triggers over-temp
+const float ABSOLUTE_MAX_TEMP = 240.0;               // absolute hard limit
+const unsigned long PT100_STABILIZATION_MS = 5000UL; // wait after lower-limit touch before PT100 sampling
 
-// tracking for runaway detection
-unsigned long tempWindowStartMillis = 0;
-float tempWindowStartTemp = 0.0;
+// Runaway detection disabled: false positives occur when relay power settles after basket lowering.
 
 // ==================================================================================================================================================
 // TIMERS
@@ -545,6 +542,15 @@ void readTemperature()
     if (millis() - lastTemperatureMillis < 250)
         return;
 
+    // Wait a short stabilization time after the basket reaches the lower stop.
+    // During this window, relay switching and power settling can create false PT100 faults.
+    if (fryerState == FRYING && (millis() - stateStartMillis) < PT100_STABILIZATION_MS)
+    {
+        lastTemperatureMillis = millis();
+        heaterRelay.off();
+        return;
+    }
+
     // Ignore PT100 readings while the basket drive motor is active because relay
     // switching noise can generate false faults or invalid temperature samples.
     if (upwardRelay.getState() || downwardRelay.getState())
@@ -625,10 +631,11 @@ void readTemperature()
         return;
     }
 
-    // -----------------------------
-    // Over-target offset (user requested +20C)
-    // -----------------------------
-    if (currentTemperature > targetTemperature + OVERTEMP_OFFSET)
+    // Over-target offset (user requested +20C) is only treated as a fault during an
+    // active frying cycle. While a new product is selected or the oil is simply cooling
+    // down before start, a hotter-than-target oil is not a fatal condition; the UI will
+    // simply remind the operator to wait until the oil cools to a safe start point.
+    if (fryerState == FRYING && currentTemperature > targetTemperature + OVERTEMP_OFFSET)
     {
         Serial.printf("[OVERTEMP] TARGET OVERSHOOT: %.1f C (target %.1f + offset %.1f)\n", currentTemperature, targetTemperature, OVERTEMP_OFFSET);
         heaterRelay.off();
@@ -638,54 +645,9 @@ void readTemperature()
         return;
     }
 
-    // -----------------------------
-    // Runaway detection (rate-of-rise)
-    // -----------------------------
-    unsigned long now = millis();
-
-    if (tempWindowStartMillis == 0)
-    {
-        tempWindowStartMillis = now;
-        tempWindowStartTemp = currentTemperature;
-    }
-    else if (now - tempWindowStartMillis >= RUNAWAY_WINDOW_MS)
-    {
-        float delta = currentTemperature - tempWindowStartTemp;
-
-        if (delta >= RUNAWAY_DELTA_C)
-        {
-            Serial.printf("[RUNAWAY] Temperature rose %.2f C in %lu ms\n", delta, now - tempWindowStartMillis);
-
-            // Treat as thermal runaway: stop heating and raise basket automatically
-            heaterRelay.off();
-            lastFault = "RUNAWAY_TEMP";
-
-            // If not already raising, start raising so basket leaves oil
-            if (!upperLimitReached())
-            {
-                Serial.println("[RUNAWAY] Auto-raising basket to remove product from oil");
-                // set state to RAISING (this turns on upward relay via setFryerState)
-                setFryerState(RAISING);
-            }
-            else
-            {
-                // already raised — just set fault state
-                setFryerState(FAULT);
-            }
-
-            broadcastStatus();
-
-            // reset window start so we don't repeatedly trigger
-            tempWindowStartMillis = 0;
-            tempWindowStartTemp = 0.0;
-
-            return;
-        }
-
-        // slide the window forward
-        tempWindowStartMillis = now;
-        tempWindowStartTemp = currentTemperature;
-    }
+    // Runaway detection is intentionally disabled because noisy PT100 readings and
+    // power settling immediately after the basket reaches the lower stop can create
+    // false positives during the first few seconds of frying.
 }
 
 // ==================================================================================================================================================

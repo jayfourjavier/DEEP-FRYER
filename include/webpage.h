@@ -921,12 +921,7 @@ button:active {
 
 const products = [
 
-    {
-        product: "TEST",
-        icon: "🍟",
-        temperature: 20,
-        duration: 5
-    },
+
     {
         product: "Fries",
         icon: "🍟",
@@ -960,7 +955,14 @@ const products = [
         icon: "🥩",
         temperature: 190,
         duration: 300
+    },
+        {
+        product: "TEST",
+        icon: "⚙️",
+        temperature: 50,
+        duration: 30
     }
+    
 
 ];
 
@@ -1454,14 +1456,28 @@ function handleMessage(data)
         }
     }
 
-    // Ignore PT100 faults for the UI modal. They should not trigger a blocking
-    // fault popup or reboot prompt, but other hardware faults can still display.
+    // Ignore PT100 and over-temperature faults for the blocking reboot modal while
+    // the user is selecting a recipe or waiting for the oil to cool before start.
+    // In those cases, the UI should simply remind the operator to wait instead of
+    // forcing a reboot prompt.
     if (data.fault)
     {
         const code = String(data.fault);
 
-        if (code === "PT100_FAULT" || code === "PT100_INVALID")
+        if (
+            code === "PT100_FAULT" ||
+            code === "PT100_INVALID" ||
+            code === "OVERTEMP" ||
+            code === "ABS_OVERTEMP"
+        )
         {
+            if (confirmStartModal && confirmStartModal.classList.contains("show"))
+            {
+                const tempOkForStart = Number(data.temperature || 0) <= Number(data.target || 0) + 5;
+                if (confirmStartConfirm) confirmStartConfirm.disabled = !tempOkForStart;
+                if (confirmStartHint) confirmStartHint.textContent = tempOkForStart ? "" : "Cooling — wait until temp is at target +5°C";
+            }
+
             if (errorModal)
                 errorModal.classList.remove("show");
 
